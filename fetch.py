@@ -35,6 +35,7 @@ def fetch_cds_level_data(
     pressure_level: Optional[list] = None,
     product_type: Literal["reanalysis"] = "reanalysis",
     format: Literal["grib"] = "grib",
+    use_cache: bool = True,
 ) -> str:
     """
     Fetches data for a specified level from the CDS API and saves it to a GRIB file.
@@ -70,8 +71,8 @@ def fetch_cds_level_data(
         )
         logger.debug(f"Output path not provided, saving to {output_path}")
 
-    if Path(output_path).name in os.listdir(CACHE_DIR):
-        logger.info(f"Data already exists in cache, skipping download")
+    if use_cache and Path(output_path).exists():
+        logger.warning(f"Data already exists in cache, skipping download")
         return output_path
 
     logger.info(f"Fetching data for {level_name} level type")
@@ -110,13 +111,25 @@ def retreive_era5_states(date: str, time: int = 12):
     pass
 
 
+def merge_files(output_file_path: str, input_file_paths: list[str]):
+    """
+    Merges multiple files into a single file using the `cat` command via subprocess.
+    This is generally not recommended for binary files like GRIB without ensuring compatibility.
+    """
+    logger.debug(f"Merging {len(input_file_paths)} files into {output_file_path}")
+    breakpoint()
+    with output_file_path.open("wb") as merged_file:
+        # Ensure the file path is a string for subprocess
+        subprocess.run(["cat", *input_file_paths], stdout=merged_file, check=True)
+    logger.success(
+        f"Merged single-level and pressure-level data into {output_file_path}"
+    )
+
+
 def fetch_model_ics(model_name: str, date: str, time: int = 12):
     """
-    Fetches initial condition files for a given model, date, and time. Merges
-    single-level and pressure-level data into a single file.
-
-    NOTE: The function is designed for models with straightforward single and pressure
-    level data. Models like Graphcast with concatenated states might require additional handling.
+    Fetches initial condition files for a given model, date, and time.
+    Downloads each dataset to a separate file and then merges all into a single final file.
     """
     model_config = get_model_config(model_name)
     time_str = f"{time:02d}:00"
@@ -129,11 +142,10 @@ def fetch_model_ics(model_name: str, date: str, time: int = 12):
         logger.info(f"Initial model state already exists, skipping fetch")
         return ic_file_path
 
-    with NamedTemporaryFile(delete=False, suffix=".grib") as tmp_file:
-        output_paths = []
+    downloaded_files = []
+    try:
         for level_name, level_type in LEVEL_TYPE_MAP.items():
-            output_path = Path(tmp_file.name)
-
+            temp_file_path = CACHE_DIR / f"temp_{level_name}_{date}_{time_str}.grib"
             if level_type == "pressure":
                 model_vars, model_lvls = model_config.get(level_type)
             elif level_type == "single":
@@ -141,6 +153,7 @@ def fetch_model_ics(model_name: str, date: str, time: int = 12):
                 model_lvls = None
             else:
                 raise ValueError(f"Invalid level type: {level_type}")
+
             logger.info(f"Fetching {level_type}-level data for {model_name}")
 
             fetch_cds_level_data(
@@ -149,17 +162,24 @@ def fetch_model_ics(model_name: str, date: str, time: int = 12):
                 month=month,
                 day=day,
                 time=time,
-                output_path=str(output_path),
+                output_path=str(temp_file_path),
                 variable=[get_cds_api_map(level_type).get(var) for var in model_vars],
                 pressure_level=model_lvls,
+                use_cache=False,
             )
-            output_paths.append(output_path)
 
-        # Merge the temporary files into the final IC file
-        with open(ic_file_path, "wb") as merged_file:
-            for path in output_paths:
-                with open(path, "rb") as part_file:
-                    merged_file.write(part_file.read())
+            downloaded_files.append(temp_file_path)
+            logger.success(f"Fetched {level_type}-level data for {model_name}")
+
+        # Merge the downloaded files into the final IC file
+        merge_files(ic_file_path, downloaded_files)
+
+    finally:
+        # Cleanup: Delete the downloaded temporary files
+        for file_path in downloaded_files:
+            if file_path.exists():
+                file_path.unlink()
+                logger.info(f"Deleted temporary file: {file_path}")
 
     logger.info(f"Initial model state prepared and saved to {ic_file_path}")
     return ic_file_path
@@ -174,4 +194,4 @@ if __name__ == "__main__":
     #     time=12,
     # )
 
-    fetch_model_ics(model_name="PANGUWEATHER", date="20240102", time=12)
+    fetch_model_ics(model_name="PANGUWEATHER", date="20240104", time=12)
