@@ -144,4 +144,3 @@ dependencies:
       - urllib3==2.2.1
       - xarray==2024.3.0
       - zipp==3.18.1
-prefix: /Users/m/miniconda3/envs/weather_metal
