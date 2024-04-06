@@ -79,7 +79,7 @@ class PanguWeather(BaseModel):
         self.output_path = (
             OUTPUT_DIR
             / "panguweather/"
-            / f"date={date}__time={time:02d}:00__{lead_time}.grib"
+            / f"date={date}__time={time:02d}:00__{lead_time}_.grib"
         )
         self.config["path"] = str(self.output_path)
 
