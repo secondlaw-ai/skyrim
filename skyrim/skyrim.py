@@ -6,9 +6,6 @@ MODEL_CLASS_MAP = {
     "graphcast": GraphCast,
 }
 
-CKPT_DIR = "checkpoints"
-
-    
 
 def initiazlize_model(
     model_name: str, date: str, time: int, lead_time: int, file: None
@@ -22,7 +19,7 @@ class Skyrim:
     def __init__(
         self, model_name: str, date: str, time: int = 12, lead_time: int = 24, file=None
     ) -> None:
-        
+
         self.model = initiazlize_model(model_name, date, time, lead_time, file)
 
     def predict(self):
