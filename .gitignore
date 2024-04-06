@@ -1,2 +1,4 @@
 .cache/
 __pycache__/
+results/
+skyrim/checkpoints/

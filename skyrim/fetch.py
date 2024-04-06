@@ -18,10 +18,6 @@ LEVEL_TYPE_MAP = {
 }
 
 
-def check_cache():
-    raise NotImplementedError("This function is not implemented yet")
-
-
 def fetch_cds_level_data(
     level_name: Literal[
         "reanalysis-era5-single-levels", "reanalysis-era5-pressure-levels"
@@ -101,14 +97,6 @@ def fetch_cds_level_data(
 
     return output_path
 
-
-def retreive_era5_states(date: str, time: int = 12):
-    """
-    fetch all relevant era5 params that are used for all model, i.e. CSD_API_MAP
-    save these files in the cache directory if they are not already there
-    return the path to generated file
-    """
-    pass
 
 
 def merge_files(output_file_path: str, input_file_paths: list[str]):
