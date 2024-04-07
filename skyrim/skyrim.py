@@ -69,37 +69,51 @@ class ModelPrediction:
         return self.prediction.sizes
 
     def slice(
-        self, latitude: slice, longitude: slice, variables: list | str | None = None
+        self,
+        variable: str | None = None,
+        latitude: slice | None = None,
+        longitude: slice | None = None,
+        isobaricInhPa: slice | None = None,
+        step: slice | None = None,
     ):
-        # TODO: check if this is the case for other models, e.g. GraphCast
-
-        # handle wrapping of longitudes if the slice crosses the 0/360 boundary
-        if longitude.start > longitude.stop:
-            # Slice from start to 360 and 0 to stop, then concatenate
-            lon_slice_1 = self.prediction.sel(longitude=slice(longitude.start, 360))
-            lon_slice_2 = self.prediction.sel(longitude=slice(0, longitude.stop))
-            result = xr.concat([lon_slice_1, lon_slice_2], dim="longitude")
+        """
+        Returns a slice of the dataset according to specified dimensions.
+        Handles wrapping for longitude if slice.start > slice.stop.
+        Only slices across dimensions that are not None.
+        """
+        # Start with the whole dataset or a specific variable
+        if variable is None:
+            data = self.prediction
         else:
-            result = self.prediction.sel(longitude=longitude)
+            data = self.prediction[variable]
 
-        # slice by latitudez
-        result = result.sel(latitude=latitude)
+        # Handle longitude wrap-around
+        if longitude and longitude.start > longitude.stop:
+            lon_slice_1 = data.sel(longitude=slice(longitude.start, 360))
+            lon_slice_2 = data.sel(longitude=slice(0, longitude.stop))
+            data = xr.concat([lon_slice_1, lon_slice_2], dim="longitude")
+        elif longitude:
+            data = data.sel(longitude=longitude)
 
-        # select variables if specified
-        if variables:
-            if isinstance(variables, list):
-                result = result[variables]
-            else:  # assuming str
-                result = result[[variables]]
+        # Apply latitude slice if specified
+        if latitude:
+            data = data.sel(latitude=latitude)
 
-        return result
+        # Apply isobaricInhPa slice if specified and relevant
+        if isobaricInhPa and "isobaricInhPa" in data.dims:
+            data = data.sel(isobaricInhPa=isobaricInhPa)
+
+        if step and "step" in data.dims:
+            data = data.sel(step=step)
+
+        return data
 
     def point(
         self,
         latitude: float,
         longitude: float,
         isobaricInhPa: float | None = None,
-        variable: str | None = None,
+        variable: str | None = None,  # if None, select across all variables
         step: int | None = 1,  # not sure if this exists in all the models
     ):
 
