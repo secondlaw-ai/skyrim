@@ -4,15 +4,15 @@ import requests
 from loguru import logger
 from ai_models.model import load_model
 
-OUTPUT_DIR = Path("./results")
+OUTPUT_DIR = Path(__file__).parent.parent / Path("./results")
 if not OUTPUT_DIR.exists():
     OUTPUT_DIR.mkdir()
-logger.debug(f"Output directory: {OUTPUT_DIR}")
+    logger.success(f"Created output directory: {OUTPUT_DIR}")
 
 CHECKPOINT_DIR = Path(__file__).parent / "checkpoints"
 if not CHECKPOINT_DIR.exists():
     CHECKPOINT_DIR.mkdir()
-logger.debug(f"Checkpoint directory: {CHECKPOINT_DIR}")
+    logger.success(f"Checkpoint directory: {CHECKPOINT_DIR}")
 
 BASE_CONFIG = {
     "models": False,
@@ -79,7 +79,7 @@ class PanguWeather(BaseModel):
         self.output_path = (
             OUTPUT_DIR
             / "panguweather/"
-            / f"date={date}__time={time:02d}:00__{lead_time}_.grib"
+            / f"date={date}__time={time:02d}:00__{lead_time}__input={self.config['input']}.grib"
         )
         self.config["path"] = str(self.output_path)
 
@@ -121,6 +121,3 @@ class FourCastNet(BaseModel):
 
 class FourCastNetV2(BaseModel):
     pass
-
-
-print(__file__)

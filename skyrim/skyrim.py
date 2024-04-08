@@ -43,6 +43,7 @@ class ModelPrediction:
     date: str = field(init=False)
     time: int = field(init=False)
     lead_time: int = field(init=False)
+    input: str = field(init=False)
     prediction: xr.Dataset = field(init=False)
 
     def __post_init__(self):
@@ -51,6 +52,7 @@ class ModelPrediction:
         self.date = parts[0].split("=")[1]
         self.time = int(parts[1].split("=")[1].split(":")[0])
         self.lead_time = int(parts[2].split(".")[0])
+        self.input = parts[3].split("=")[1]
         self.prediction = xr.open_dataset(self.filepath)
 
     def __repr__(self):
@@ -58,11 +60,11 @@ class ModelPrediction:
 
     @property
     def variables(self):
-        return self.prediction.data_vars
+        return list(self.prediction.data_vars)
 
     @property
     def coords(self):
-        return self.prediction.coords
+        return list(self.prediction.coords)
 
     @property
     def size(self):
@@ -86,6 +88,11 @@ class ModelPrediction:
             data = self.prediction
         else:
             data = self.prediction[variable]
+
+        # Convert negative longitude to positive in a 0-360 system
+        # TODO: check if this is the case for all the models
+        if longitude.start < 0:
+            longitude.start = 360 + longitude
 
         # Handle longitude wrap-around
         if longitude and longitude.start > longitude.stop:
@@ -116,6 +123,11 @@ class ModelPrediction:
         variable: str | None = None,  # if None, select across all variables
         step: int | None = 1,  # not sure if this exists in all the models
     ):
+
+        # Convert negative longitude to positive in a 0-360 system
+        # TODO: check if this is the case for all the models
+        if longitude < 0:
+            longitude = 360 + longitude
 
         # Handle case where no specific variable is defined: select across all variables
         if variable is None:
@@ -175,3 +187,49 @@ class ModelPrediction:
         if step is not None and "step" in data_selection.dims:
             data_selection = data_selection.isel(step=step)
         return data_selection
+
+    def point_wind_uv(
+        self,
+        latitude: float,
+        longitude: float,
+        isobaricInhPa: float,
+        step: int | None = None,
+    ):
+        u = self.point(
+            latitude=latitude,
+            longitude=longitude,
+            isobaricInhPa=isobaricInhPa,
+            variable="u",
+            step=step,
+        )
+        v = self.point(
+            latitude=latitude,
+            longitude=longitude,
+            isobaricInhPa=isobaricInhPa,
+            variable="v",
+            step=step,
+        )
+        return {"u": u, "v": v}
+
+    def plot(self):
+        # TODO: look into availabe 2D visualization libraries
+        # e.g. climetlab
+        pass
+
+
+def estimate_pressure_hpa(elevation_m):
+    """
+    Estimate atmospheric pressure at a given elevation using the Barometric Formula.
+
+    :param elevation_m: Elevation in meters.
+    :return: Atmospheric pressure in Pascals.
+    """
+    P0 = 101325  # Sea level standard atmospheric pressure (Pa)
+    L = 0.0065  # Standard temperature lapse rate (K/m)
+    T0 = 288.15  # Standard temperature at sea level (K)
+    g = 9.80665  # Acceleration due to gravity (m/s^2)
+    M = 0.0289644  # Molar mass of Earth's air (kg/mol)
+    R = 8.31447  # Universal gas constant (J/(mol·K))
+
+    P = P0 * (1 - (L * elevation_m) / T0) ** (g * M / (R * L))
+    return P / 100  # Convert Pa to hPa
