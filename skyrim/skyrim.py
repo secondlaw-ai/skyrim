@@ -27,7 +27,8 @@ class Skyrim:
         self.model = initiazlize_model(model_name, date, time, lead_time, file)
 
     def predict(self):
-        self.model.predict()
+        prediction = ModelPrediction(filepath=self.model.predict())
+        return prediction
 
     def predict_local(self):
         pass

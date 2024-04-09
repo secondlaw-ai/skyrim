@@ -109,10 +109,15 @@ class PanguWeather(BaseModel):
 
     def predict(self):
         self.model.run()
+        return self.output_path
 
 
 class GraphCast(BaseModel):
-    pass
+    def __init__(self):
+        pass
+
+    def download_checkpoint(self):
+        pass
 
 
 class FourCastNet(BaseModel):
