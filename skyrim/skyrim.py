@@ -1,13 +1,19 @@
+import os
 from pathlib import Path
 from loguru import logger
 import xarray as xr
 from dataclasses import dataclass, field
 
-from .models import PanguWeather, GraphCast
+from .models import PanguWeather, GraphCast, FourCastNetV2, FourCastNet
+
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
+
 
 MODEL_CLASS_MAP = {
     "panguweather": PanguWeather,
     "graphcast": GraphCast,
+    "fourcastnetv2": FourCastNetV2,
+    "fourcastnet": FourCastNet,
 }
 
 
@@ -23,7 +29,7 @@ class Skyrim:
     def __init__(
         self, model_name: str, date: str, time: int = 12, lead_time: int = 24, file=None
     ) -> None:
-
+        logger.info(f"Initializing model {model_name}")
         self.model = initiazlize_model(model_name, date, time, lead_time, file)
 
     def predict(self):

@@ -9,7 +9,10 @@ from dataclasses import asdict
 
 logger.success("imports successful")
 model = Skyrim(
-    model_name="panguweather",
+    # model_name="graphcast",
+    # model_name="panguweather",
+    # model_name="fourcastnetv2",
+    model_name="fourcastnet",
     date="20240324",  # str YYYYMMDD
     time=12,  # int 0-23
     lead_time=12,  # hours
@@ -20,4 +23,3 @@ logger.info(f"Date: {pred.date}")
 logger.info(f"Time: {pred.time}")
 logger.info(f"Lead time: {pred.lead_time}")
 logger.info(f"Input: {pred.input}")
-

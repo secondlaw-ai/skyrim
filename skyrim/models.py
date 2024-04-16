@@ -53,6 +53,10 @@ model_args = []  # Additional model arguments not covered by cfg
 
 
 class BaseModel:
+
+    DOWNLOAD_URL_BASE = None
+    DOWNLOAD_FILES = None
+
     def __init__(self, date: str, time: int, lead_time: int, file: None) -> None:
         self.config = BASE_CONFIG
         self.config["date"] = date
@@ -68,11 +72,33 @@ class BaseModel:
     def predict(self):
         raise NotImplementedError
 
-    def download_checkpoint(self):
-        raise NotImplementedError
+    @classmethod
+    def download_checkpoint(cls):
+        if cls.DOWNLOAD_URL_BASE is None or cls.DOWNLOAD_FILES is None:
+            raise ValueError("Download URL base or files not set in the subclass")
+
+        for filename in cls.DOWNLOAD_FILES:
+            file_path = CHECKPOINT_DIR / filename
+            if not file_path.exists():
+                download_url = f"{cls.DOWNLOAD_URL_BASE}{filename}"
+                if not file_path.parent.exists():
+                    file_path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"Downloading {filename}...")
+                response = requests.get(download_url)
+                response.raise_for_status()
+                with open(file_path, "wb") as f:
+                    f.write(response.content)
+                logger.success(f"Downloaded {filename} to {file_path}")
+            else:
+                logger.info(f"{filename} already exists.")
 
 
 class PanguWeather(BaseModel):
+    DOWNLOAD_URL_BASE = (
+        "https://get.ecmwf.int/repository/test-data/ai-models/pangu-weather/"
+    )
+    DOWNLOAD_FILES = ["pangu_weather_24.onnx", "pangu_weather_6.onnx"]
+
     def __init__(self, date: str, time: int, lead_time: int, file: None) -> None:
         super().__init__(date, time, lead_time, file)
         self.config["model"] = "panguweather"
@@ -89,40 +115,101 @@ class PanguWeather(BaseModel):
         self.download_checkpoint()
         self.model = load_model(self.config["model"], **self.config, model_args=[])
 
-    def download_checkpoint(self):
-        download_url_base = (
-            "https://get.ecmwf.int/repository/test-data/ai-models/pangu-weather/"
-        )
-        download_files = ["pangu_weather_24.onnx", "pangu_weather_6.onnx"]
-        for filename in download_files:
-            file_path = CHECKPOINT_DIR / filename
-            if not file_path.exists():
-                download_url = f"{download_url_base}{filename}"
-                logger.info(f"Downloading {filename}...")
-                response = requests.get(download_url)
-                response.raise_for_status()  # Raises an HTTPError if the response was an error
-                with open(file_path, "wb") as f:
-                    f.write(response.content)
-                logger.succes(f"Downloaded {filename} to {file_path}")
-            else:
-                logger.info(f"{filename} already exists.")
-
     def predict(self):
         self.model.run()
         return self.output_path
 
 
 class GraphCast(BaseModel):
-    def __init__(self):
-        pass
 
-    def download_checkpoint(self):
-        pass
+    DOWNLOAD_URL_BASE = "https://storage.googleapis.com/dm_graphcast/"
+    DOWNLOAD_FILES = [
+        "params/GraphCast_operational - ERA5-HRES 1979-2021 - resolution 0.25 - pressure levels 13 - mesh 2to6 - precipitation output only.npz",
+        "stats/diffs_stddev_by_level.nc",
+        "stats/mean_by_level.nc",
+        "stats/stddev_by_level.nc",
+    ]
+
+    def __init__(self, date: str, time: int, lead_time: int, file: None) -> None:
+        super().__init__(date, time, lead_time, file)
+        self.config["model"] = "graphcast"
+        self.output_path = (
+            OUTPUT_DIR
+            / "graphcast/"
+            / f"date={date}__time={time:02d}:00__{lead_time}__input={self.config['input']}.grib"
+        )
+        self.config["path"] = str(self.output_path)
+
+        if not Path(self.output_path).exists():
+            Path(self.output_path.parent).mkdir(parents=True, exist_ok=True)
+
+        self.download_checkpoint()
+        self.model = load_model(self.config["model"], **self.config, model_args=[])
+
+    def predict(self):
+        self.model.run()
+        return self.output_path
 
 
 class FourCastNet(BaseModel):
+    DOWNLOAD_URL_BASE = (
+        "https://get.ecmwf.int/repository/test-data/ai-models/fourcastnet/0.0/"
+    )
+
+    DOWNLOAD_FILES = [
+        "backbone.ckpt",
+        "precip.ckpt",
+        "global_means.npy",
+        "global_stds.npy",
+    ]
+
+    def __init__(self, date: str, time: int, lead_time: int, file: None) -> None:
+        super().__init__(date, time, lead_time, file)
+        self.config["model"] = "fourcastnet"
+        self.output_path = (
+            OUTPUT_DIR
+            / "fourcastnet/"
+            / f"date={date}__time={time:02d}:00__{lead_time}__input={self.config['input']}.grib"
+        )
+        self.config["path"] = str(self.output_path)
+
+        if not Path(self.output_path).exists():
+            Path(self.output_path.parent).mkdir(parents=True, exist_ok=True)
+
+        self.download_checkpoint()
+        self.model = load_model(self.config["model"], **self.config, model_args=[])
+
+    def predict(self):
+        self.model.run()
+        return self.output_path
+
     pass
 
 
 class FourCastNetV2(BaseModel):
+    DOWNLOAD_URL_BASE = (
+        "https://get.ecmwf.int/repository/test-data/ai-models/fourcastnetv2/small/"
+    )
+    DOWNLOAD_FILES = ["weights.tar", "global_means.npy", "global_stds.npy"]
+
+    def __init__(self, date: str, time: int, lead_time: int, file: None) -> None:
+        super().__init__(date, time, lead_time, file)
+        self.config["model"] = "fourcastnetv2-small"
+        self.output_path = (
+            OUTPUT_DIR
+            / "fourcastnetv2-small/"
+            / f"date={date}__time={time:02d}:00__{lead_time}__input={self.config['input']}.grib"
+        )
+        self.config["path"] = str(self.output_path)
+
+        if not Path(self.output_path).exists():
+            Path(self.output_path.parent).mkdir(parents=True, exist_ok=True)
+
+        self.download_checkpoint()
+        self.model = load_model(self.config["model"], **self.config, model_args=[])
+
+    def predict(self):
+        self.model.run()
+        return self.output_path
+
     pass
