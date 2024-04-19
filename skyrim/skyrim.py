@@ -19,6 +19,8 @@ class Skyrim:
         
     def predict(self, start_time: datetime.datetime, n_steps:int = 1):
         # TODO: add saving functionality
+        # TODO: add wrapper around the predictions to be able to play with the models
+        
         return self.model.predict(start_time=start_time, n_steps=n_steps)
         
         

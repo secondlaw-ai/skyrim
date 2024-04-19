@@ -1,40 +1,65 @@
+import argparse
 import os
 from loguru import logger
 from skyrim.models import FoundationModel
 from dotenv import load_dotenv, dotenv_values
+
 import datetime
+import gc
 
-# Load environment variables from .env file
-env_vars = dotenv_values(".env")
-
-# Print the contents of the .env file
-for key, value in env_vars.items():
-    print(f"{key}: {value}")
 
 load_dotenv()
-
-OUTPUT_DIR = "./outputs"
 
 # NOTE:
 # ERA5 variables are mean values for previous hour,
 # i.e. 13:01 to 14:00 are labelled as "14:00"
 
-logger.info(f"CDSAPI_URL: {os.environ.get('CDSAPI_URL')}")
-logger.info(f"CDSAPI_KEY: {os.environ.get('CDSAPI_KEY')}")
 
-logger.success("imports successful")
+OUTPUT_DIR = "./outputs"
 
-available_models = FoundationModel.list_available_models()
-print(available_models)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--model_name",
+        "-m",
+        type=str,
+        choices=["pangu", "fcnv2_sm", "graphcast", "fcn", "dlwp"],
+        default="pangu",
+    )
+    parser.add_argument(
+        "--start_time",
+        "-s",
+        type=str,
+        default="20180101",
+    )
+    parser.add_argument(
+        "--n_steps",
+        "-n",
+        type=int,
+        default=1,
+    )
+    parser.add_argument(
+        "--list_models",
+        "-lm",
+        action="store_true",
+        help="List all available models and exit",
+    )
 
+    args = parser.parse_args()
 
-for model_name in available_models:
+    if args.list_models:
+        available_models = FoundationModel.list_available_models()
+        print("Available models:", available_models)
+        exit()
+
+    # Convert start time string to datetime object
+    start_time = datetime.datetime.strptime(args.start_time, "%Y%m%d")
+
     # initialize the model
-    model = FoundationModel(model_name = model_name)
+    model = FoundationModel(model_name=args.model_name)
 
     # set prediction initial state time
-    # the input state is fetched from cds 
-    start_time = datetime.datetime(2018,1,1)
+    # the input state is fetched from cds
     pred = model.predict(start_time=start_time)
 
     # save the prediction
