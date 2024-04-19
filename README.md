@@ -3,21 +3,30 @@
 
 This document serves as an internal progress tracker for the development of a wrapper library that integrates several publicly available models. The goal is to streamline the usage and evaluation of these models for our projects.
 
+## Installation
+
+Pain is real. Suffering is optional. 
+TBA.
+
 ## Models to Wrap
 
 - **Pangu Weather**
   - [Original](https://github.com/198808xc/Pangu-Weather)
   - [ECMWF](https://github.com/ecmwf-lab/ai-models-panguweather)
+  - [NVIDIA](https://github.com/NVIDIA/earth2mip)
 
 - **FourcastNet**
   - [Original](https://github.com/NVlabs/FourCastNet)
   - [ECMWF](https://github.com/ecmwf-lab/ai-models-fourcastnetv2)
+  - [NVIDIA](https://github.com/NVIDIA/earth2mip)
 
 - **Graphcast**
   - [Original](https://github.com/google-deepmind/graphcast)
   - [ECMWF](https://github.com/ecmwf-lab/ai-models-graphcast)
+  - [NVIDIA](https://github.com/NVIDIA/earth2mip)
 
-- **TBA**
+- **Fuxi**
+  -[Original](https://github.com/tpys/FuXi)
 
 ## Feature Development Checklist
 
