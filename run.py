@@ -73,5 +73,5 @@ if __name__ == "__main__":
     model_name = model.model_name
     os.makedirs(f"{OUTPUT_DIR}/{model_name}", exist_ok=True)
     output_path = f"{OUTPUT_DIR}/{model_name}/{model_name}__{output_meta}.nc"
-    pred.to_netcdf(output_path)
+    pred.squeeze().to_netcdf(output_path)
     logger.success(f"outputs saved to {output_path}")

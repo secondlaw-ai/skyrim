@@ -85,6 +85,14 @@ class FoundationModel:
     def time_step(self):
         return self.model.time_step
 
+    @property
+    def in_channel_names(self):
+        return self.model.in_channel_names
+
+    @property
+    def out_channel_names(self):
+        return self.model.out_channel_names
+
     def predict(
         self, start_time: datetime.datetime, n_steps: int = 1
     ) -> xr.DataArray | xr.Dataset:
