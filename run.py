@@ -1,12 +1,10 @@
 import argparse
 import os
+import datetime
 from loguru import logger
 from skyrim.models import FoundationModel
+from skyrim.utils import ensure_cds_loaded
 from dotenv import load_dotenv, dotenv_values
-
-import datetime
-import gc
-
 
 load_dotenv()
 
@@ -56,6 +54,7 @@ if __name__ == "__main__":
     start_time = datetime.datetime.strptime(args.start_time, "%Y%m%d")
 
     # initialize the model
+    ensure_cds_loaded()
     model = FoundationModel(model_name=args.model_name)
 
     # set prediction initial state time
