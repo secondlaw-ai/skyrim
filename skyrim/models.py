@@ -15,8 +15,10 @@ import earth2mip.networks.pangu as pangu
 import earth2mip.networks.fcnv2_sm as fcnv2_sm
 import earth2mip.networks.fcn as fcn
 import earth2mip.networks.graphcast as graphcast
+from typing import Literal
+from .inference import run_basic_inference
 
-OUTPUT_DIR = Path(__file__).parent.parent / Path("./outputs")
+OUTPUT_DIR = Path(__file__).parent.parent.resolve() / Path("./outputs")
 if not OUTPUT_DIR.exists():
     OUTPUT_DIR.mkdir()
     logger.success(f"Created output directory: {OUTPUT_DIR}")
@@ -93,21 +95,22 @@ class FoundationModel:
     def out_channel_names(self):
         return self.model.out_channel_names
 
-    def predict(
-        self, start_time: datetime.datetime, n_steps: int = 1
+    def predict_one_step(
+        self,
+        start_time: datetime.datetime,
+        initial_condition: str | Path | None = None,
     ) -> xr.DataArray | xr.Dataset:
         # TODO:
-        # - add multistep functionality for graphcast
-        # - check if n_steps=1 always maps to 6 hours
-        # - add saving functionality
+        # - add saving functionality?
         # - add functionality to flush the loaded data_source from cache
 
         if self.model_name != "graphcast":
-            return inference_ensemble.run_basic_inference(
+            return run_basic_inference(
                 model=self.model,
-                n=n_steps,
+                n=1,
                 data_source=self.data_source,
                 time=start_time,
+                x=initial_condition,
             )
         else:
             # NOTE: this only works for graphcast operational model
@@ -127,6 +130,59 @@ class FoundationModel:
             # len(state): 3,
             # state[0]: Timestamp('2018-01-02 06:00:00')
             return state[1]
+
+    def rollout(
+        self,
+        start_time: datetime.datetime,
+        n_steps: int = 3,
+        save: bool = True,
+    ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
+        # it does not make sense to keep all the results in the memory
+        # return final pred and list of paths of the saved predictions
+        # TODO: add functionality to rollout from a given initial condition
+
+        pred, output_paths, source = None, [], "cds"
+        for n in range(n_steps):
+            pred = self.predict_one_step(start_time, initial_condition=pred)
+            pred_time = start_time + self.time_step
+            if save:
+                output_path = self.save_output(pred, start_time, pred_time, source)
+                start_time, source = pred_time, "file"
+                output_paths.append(output_path)
+            logger.success(f"Rollout step {n+1}/{n_steps} completed")
+        return pred, output_paths
+
+    def save_output(
+        self,
+        pred: xr.DataArray | xr.Dataset,
+        start_time: datetime.datetime,
+        pred_time: datetime.datetime,
+        source: Literal["cds", "file"] = "cds",
+        output_dir=OUTPUT_DIR,
+    ):
+        # e.g.:
+        # filename = "pangu__20180101_00:00__20180101_06:00.nc"
+        # output_path = "./outputs/pangu/pangu__20180101_00:00__20180101_06:00.nc"
+
+        filename = (
+            f"{self.model_name}" + "__"
+            f"{source}__"
+            f"{start_time.strftime('%Y%m%d_%H:%M')}"
+            + "__"
+            + f"{pred_time.strftime('%Y%m%d_%H:%M')}.nc"
+        )
+        output_path = OUTPUT_DIR / self.model_name / filename
+
+        logger.info(f"Saving outputs to {output_path}")
+        if not output_path.parent.exists():
+            logger.info(
+                f"Creating parent directory to save outputs: {output_path.parent}"
+            )
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        pred.to_netcdf(output_path)
+        logger.success(f"outputs saved to {output_path}")
+        return output_path
 
 
 class FoundationEnsemble:

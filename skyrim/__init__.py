@@ -8,3 +8,5 @@ from .prediction import (
     GraphcastPrediction,
     estimate_pressure_hpa,
 )
+
+from .inference import run_basic_inference
