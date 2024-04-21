@@ -6,3 +6,4 @@ skyrim/checkpoints/
 notebooks/pg_*
 .env
 .vscode
+.DS_Store
