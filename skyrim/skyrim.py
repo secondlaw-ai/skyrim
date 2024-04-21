@@ -1,37 +1,36 @@
 import datetime
 import os
-import time
 import dotenv
-import xarray as xr
-from dataclasses import dataclass, field
-from .models import FoundationModel
-from .prediction import (
+from .models import (
+    PanguModel,
     PanguPrediction,
-    FourcastNetPrediction,
-    FourcastNetV2Prediction,
+    FourcastnetV2Model,
+    FourcastnetV2Prediction,
+    DLWPModel,
     DLWPPrediction,
+    GraphcastModel,
     GraphcastPrediction,
+    FourcastnetModel,
+    FourcastnetPrediction,
 )
-from .utils import timeit
 from loguru import logger
 
 
 dotenv.load_dotenv()
-
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
-model_classes = {
-    "pangu": PanguPrediction,
-    "fcn": FourcastNetPrediction,
-    "fcnv2_sm": FourcastNetV2Prediction,
-    "dlwp": DLWPPrediction,
-    "graphcast": GraphcastPrediction,
+MODEL_FACTORY = {
+    "pangu": (PanguModel, PanguPrediction),
+    "fourcastnet": (FourcastnetModel, FourcastnetPrediction),
+    "fourcastnet_v2": (FourcastnetV2Model, FourcastnetV2Prediction),
+    "dlwp": (DLWPModel, DLWPPrediction),
+    "graphcast": (GraphcastModel, GraphcastPrediction),
 }
 
 
 def wrap_prediction(model_name, source):
-    if model_name in model_classes:
-        return model_classes[model_name](source)
+    if model_name in MODEL_FACTORY:
+        return MODEL_FACTORY[model_name][1](source)
     else:
         raise ValueError(f"Model name {model_name} is not supported.")
 
@@ -39,18 +38,23 @@ def wrap_prediction(model_name, source):
 class Skyrim:
     def __init__(self, model_name: str):
         self.model_name = model_name
-        self.model = FoundationModel(model_name=model_name)
+        if model_name in MODEL_FACTORY:
+            logger.debug(f"Initializing model {model_name}")
+            self.model = MODEL_FACTORY[model_name][0]()
+        else:
+            raise ValueError(f"Model name {model_name} is not supported.")
 
-    @timeit
+    @staticmethod
+    def list_available_models(self):
+        return list(MODEL_FACTORY.keys())
+
     def predict(
         self,
         date: str,  # HHMM, e.g. 0300, 1400, etc
         time: str,  # YYYMMDD, e.g. 20180101
         lead_time: int = 6,  # in hours 0-24, will be clipped to nearest 6 multiple
-        save: bool = True,
+        save: bool = False,
     ):
-
-        # should have more easy to use interface compare to FoundationModel
 
         # Create datetime object using date and time arguments as start_time
         year = int(date[:4])
@@ -65,8 +69,8 @@ class Skyrim:
         lead_time = max(6, (lead_time // 6) * 6)
         logger.debug(f"Lead time adjusted to nearest multiple of 6: {lead_time} hours")
 
-        # Calculate n_steps by dividing lead_time by the model's time_step (assuming time_step is given in hours)
-        n_steps = lead_time // self.model.time_step
+        # Calculate n_steps by dividing lead_time by the model's time_step
+        n_steps = int(lead_time // (self.model.time_step.total_seconds() / 3600))
         logger.debug(f"Number of prediction steps: {n_steps}")
 
         # Rollout predictions
@@ -77,5 +81,5 @@ class Skyrim:
         )
 
         # You might want to do something with pred or output_paths here
-        logger.success("Prediction completed successfully")
-        return pred, output_paths
+        logger.debug("Prediction completed successfully")
+        return wrap_prediction(self.model_name, pred), output_paths
