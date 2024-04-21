@@ -1,4 +1,8 @@
 
+<div align="center">
+    <img src="/skyrim/assets/output_animation_ortho.gif" alt="skyrim">
+</div>
+
 # Skyrim
 
 This document serves as an internal progress tracker for the development of a wrapper library that integrates several publicly available models. The goal is to streamline the usage and evaluation of these models for our projects.
