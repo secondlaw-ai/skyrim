@@ -1,6 +1,7 @@
 import datetime
 import os
 import dotenv
+from pathlib import Path
 from .models import (
     PanguModel,
     PanguPrediction,
@@ -39,13 +40,13 @@ class Skyrim:
     def __init__(self, model_name: str):
         self.model_name = model_name
         if model_name in MODEL_FACTORY:
-            logger.debug(f"Initializing model {model_name}")
+            logger.debug(f"Initializing {model_name} model")
             self.model = MODEL_FACTORY[model_name][0]()
         else:
             raise ValueError(f"Model name {model_name} is not supported.")
 
     @staticmethod
-    def list_available_models(self):
+    def list_available_models():
         return list(MODEL_FACTORY.keys())
 
     def predict(
@@ -55,6 +56,7 @@ class Skyrim:
         lead_time: int = 6,  # in hours 0-24, will be clipped to nearest 6 multiple
         save: bool = False,
     ):
+        # TODO: output dir should be configurable
 
         # Create datetime object using date and time arguments as start_time
         year = int(date[:4])

@@ -208,6 +208,11 @@ class GlobalPrediction:
         return u, v
 
 
+class GlobalPredictionRollout:
+    def __init__(self, rollout: list[str | xr.DataArray]):
+        raise NotImplementedError
+
+
 class GlobalEnsemle:
     def __init__(self, model_names: list):
         raise NotImplementedError

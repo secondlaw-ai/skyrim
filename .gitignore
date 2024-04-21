@@ -1,7 +1,6 @@
 .cache/
 .cache*
 __pycache__/
-results/
 outputs/
 skyrim/checkpoints/
-earth2mip
+notebooks/pg_*

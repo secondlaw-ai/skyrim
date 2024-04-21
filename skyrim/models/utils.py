@@ -58,3 +58,28 @@ def estimate_pressure_hpa(elevation_m):
 
     P = P0 * (1 - (L * elevation_m) / T0) ** (g * M / (R * L))
     return P / 100  # Convert Pa to hPa
+
+
+def perturb_initial_conditions(initial_conditions, channel, lat, lon, value):
+    """
+    Perturb the initial conditions by setting a specific value for a given channel at a specific lat/lon.
+
+    Parameters:
+    - initial_conditions (xr.DataArray | xr.Dataset): The initial conditions dataset to be perturbed.
+    - channel (str): Variable name to modify, e.g. 't2m'
+    - lat (float): Latitude where the value should be set.
+    - lon (float): Longitude where the value should be set.
+    - value (float): New value to set at the specified location.
+    """
+
+    # Ensure longitude is within the expected range
+    if lon < 0:
+        lon += 360
+
+    # Select the nearest latitude and longitude if exact values are not present
+    closest_lat = initial_conditions.sel(lat=lat, method="nearest").lat.item()
+    closest_lon = initial_conditions.sel(lon=lon, method="nearest").lon.item()
+
+    # Set the new value
+    initial_conditions[channel].loc[dict(lat=closest_lat, lon=closest_lon)] = value
+    return initial_conditions

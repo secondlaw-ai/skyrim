@@ -13,40 +13,23 @@ Pain is real. Suffering is optional.
 TBA.
 
 ## Models to Wrap
+### License
 
-- **Pangu Weather**
-  - [Original](https://github.com/198808xc/Pangu-Weather)
-  - [ECMWF](https://github.com/ecmwf-lab/ai-models-panguweather)
-  - [NVIDIA](https://github.com/NVIDIA/earth2mip)
+For detailed information regarding licensing, please refer to the license details provided on each model's main homepage, which we link to from each of the corresponding components within our repository.
 
-- **FourcastNet**
-  - [Original](https://github.com/NVlabs/FourCastNet)
-  - [ECMWF](https://github.com/ecmwf-lab/ai-models-fourcastnetv2)
-  - [NVIDIA](https://github.com/NVIDIA/earth2mip)
+- **Pangu Weather** : [Original](https://github.com/198808xc/Pangu-Weather), [ECMWF](https://github.com/ecmwf-lab/ai-models-panguweather), [NVIDIA](https://github.com/NVIDIA/earth2mip)
 
-- **Graphcast**
-  - [Original](https://github.com/google-deepmind/graphcast)
-  - [ECMWF](https://github.com/ecmwf-lab/ai-models-graphcast)
-  - [NVIDIA](https://github.com/NVIDIA/earth2mip)
+- **FourcastNet** : [Original](https://github.com/NVlabs/FourCastNet), [ECMWF](https://github.com/ecmwf-lab/ai-models-fourcastnetv2),[NVIDIA](https://github.com/NVIDIA/earth2mip)
 
-- **Fuxi**
-  -[Original](https://github.com/tpys/FuXi)
+- **Graphcast** : [Original](https://github.com/google-deepmind/graphcast), [ECMWF](https://github.com/ecmwf-lab/ai-models-graphcast), [NVIDIA](https://github.com/NVIDIA/earth2mip)
 
-## Feature Development Checklist
+- **Fuxi**: [Original](https://github.com/tpys/FuXi)
 
-### Live Predictions
-- [ ] Implement interface for real-time predictions via ECMWF API. (MARS or equivalent)
+## Roadmap
+- [ ] interface to fetch real-time NWP-based predictions, e.g. via ECMWF API.
+- [ ] global model performance comparison across various regions and parameters.
+- [ ] ensemble prediction
+- [ ] finetuning api that trains a downstream model on top of features coming from a global/foundation model, that is optimized wrt to a specific criteria and region
+- [ ] model quantization and its effect on model efficiency and accuracy.
 
-### Model Evaluation
-- [ ] Develop scripts for model performance comparison across various regions and parameters.
-
-### Best Ensemble
-- [ ] Create optimization scripts for model ensemble selection based on specific criteria (e.g., best for UK wind speed).
-
-### Additional Exploration
-- [ ] Investigate the impact of quantization on model efficiency and accuracy.
-
-## Comparison Goals
-- Establish benchmarks comparing ECMWF and original implementations to identify optimal configurations for different scenarios.
-
-This document will be updated regularly to reflect the progress and integration of new models or features into the library. It serves as a guide for internal development efforts and aids in prioritizing tasks and milestones.
+This README will be updated regularly to reflect the progress and integration of new models or features into the library. It serves as a guide for internal development efforts and aids in prioritizing tasks and milestones.
