@@ -1,9 +1,9 @@
 
 <div align="center">
-    <img src="./assets/output_animation_ortho.gif" alt="skyrim" width="200px">
+    <h1>Skyrim</h1>
+    <img src="./assets/output_animation_ortho.gif" alt="skyrim" width="150px">
 </div>
 
-# Skyrim
 
 This document serves as an internal progress tracker for the development of a wrapper library that integrates several publicly available models. The goal is to streamline the usage and evaluation of these models for our projects.
 

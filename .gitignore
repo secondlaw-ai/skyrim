@@ -4,3 +4,4 @@ __pycache__/
 outputs/
 skyrim/checkpoints/
 notebooks/pg_*
+.env
