@@ -1,6 +1,6 @@
 
 <div align="center">
-    <img src="./skyrim/assets/output_animation_ortho.gif" alt="skyrim">
+    <img src="./assets/output_animation_ortho.gif" alt="skyrim">
 </div>
 
 # Skyrim
