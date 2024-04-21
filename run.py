@@ -1,10 +1,7 @@
 import argparse
-import os
-import datetime
-from loguru import logger
-from skyrim.models import FoundationModel
+from skyrim import Skyrim
 from skyrim.utils import ensure_cds_loaded
-from dotenv import load_dotenv, dotenv_values
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -21,20 +18,29 @@ if __name__ == "__main__":
         "--model_name",
         "-m",
         type=str,
-        choices=["pangu", "fcnv2_sm", "graphcast", "fcn", "dlwp"],
+        choices=["pangu", "fourcastnet", "fourcastnet_v2", "graphcast", "dlwp"],
         default="pangu",
     )
     parser.add_argument(
-        "--start_time",
+        "--date",
         "-s",
         type=str,
         default="20180101",
+        help="YYYYMMDD",
     )
     parser.add_argument(
-        "--n_steps",
-        "-n",
+        "--time",
+        "-t",
+        type=str,
+        default="0000",
+        help="HHMM",
+    )
+    parser.add_argument(
+        "--lead_time",
+        "-l",
         type=int,
-        default=1,
+        default=6,
+        help="Lead time in hours, int 0-24",
     )
     parser.add_argument(
         "--list_models",
@@ -46,31 +52,18 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.list_models:
-        available_models = FoundationModel.list_available_models()
+        available_models = Skyrim.list_available_models()
         print("Available models:", available_models)
         exit()
 
-    # Convert start time string to datetime object
-    start_time = datetime.datetime.strptime(args.start_time, "%Y%m%d")
-
     # initialize the model
     ensure_cds_loaded()
-    model = FoundationModel(model_name=args.model_name)
+    model = Skyrim(model_name=args.model_name)
 
-    # set prediction initial state time
-    # the input state is fetched from cds
-    pred = model.predict(start_time=start_time)
-
-    # save the prediction
-    pred_datetime = start_time + model.time_step
-    output_meta = (
-        f"{start_time.strftime('%Y%m%d_%H:%M')}"
-        + "__"
-        + f"{pred_datetime.strftime('%Y%m%d_%H:%M')}"
+    # NOTE: the input state is fetched from cds by default
+    pred = model.predict(
+        date=args.date,
+        time=args.time,
+        lead_time=args.lead_time,
+        save=True,
     )
-
-    model_name = model.model_name
-    os.makedirs(f"{OUTPUT_DIR}/{model_name}", exist_ok=True)
-    output_path = f"{OUTPUT_DIR}/{model_name}/{model_name}__{output_meta}.nc"
-    pred.squeeze().to_netcdf(output_path)
-    logger.success(f"outputs saved to {output_path}")
