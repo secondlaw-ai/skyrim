@@ -5,3 +5,4 @@ outputs/
 skyrim/checkpoints/
 notebooks/pg_*
 .env
+.vscode
