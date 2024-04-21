@@ -10,6 +10,21 @@ from .utils import run_basic_inference
 
 
 class PanguModel(GlobalModel):
+    """
+    This class implements the Pangu model for environmental predictions using the Earth-2 MIP framework.
+
+    The Pangu model is based on advanced deep learning algorithms designed for high-resolution weather and climate data prediction.
+
+    Official implementation:
+    [repo link](https://github.com/198808xc/Pangu-Weather)
+
+    Reference Paper:
+    [paper link](https://www.nature.com/articles/s41586-023-06185-3)
+
+    Parameters:
+    - model_name (str): Name of the model, default is 'pangu'.
+    """
+
     def __init__(self, model_name: str = "pangu"):
         super().__init__(model_name)
 
