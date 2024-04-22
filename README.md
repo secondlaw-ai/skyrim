@@ -50,10 +50,9 @@ For detailed information regarding licensing, please refer to the license detail
 - **Fuxi**: [Original](https://github.com/tpys/FuXi)
 
 ## Roadmap
-
+- [x] ensemble prediction
 - [ ] interface to fetch real-time NWP-based predictions, e.g. via ECMWF API.
 - [ ] global model performance comparison across various regions and parameters.
-- [ ] ensemble prediction
 - [ ] finetuning api that trains a downstream model on top of features coming from a global/foundation model, that is optimized wrt to a specific criteria and region
 - [ ] model quantization and its effect on model efficiency and accuracy.
 
