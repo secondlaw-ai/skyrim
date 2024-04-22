@@ -10,8 +10,6 @@ load_dotenv()
 # i.e. 13:01 to 14:00 are labelled as "14:00"
 
 
-OUTPUT_DIR = "./outputs"
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(

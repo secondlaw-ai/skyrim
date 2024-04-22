@@ -4,7 +4,7 @@ import xarray as xr
 
 from earth2mip import registry
 from earth2mip.initial_conditions import cds
-import earth2mip.networks.fcnv2_sm as fcn
+import earth2mip.networks.fcn as fcn
 from .base import GlobalModel, GlobalPrediction
 import sys
 from .utils import run_basic_inference

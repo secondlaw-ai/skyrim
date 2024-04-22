@@ -5,7 +5,6 @@ from pathlib import Path
 from loguru import logger
 import xarray as xr
 
-
 OUTPUT_DIR = Path(__file__).parent.parent.parent.resolve() / Path("./outputs")
 
 if not OUTPUT_DIR.exists():
@@ -210,20 +209,4 @@ class GlobalPrediction:
 
 class GlobalPredictionRollout:
     def __init__(self, rollout: list[str | xr.DataArray]):
-        raise NotImplementedError
-
-
-class GlobalEnsemle:
-    def __init__(self, model_names: list):
-        raise NotImplementedError
-
-    def predict_one_step(self, start_time: datetime.datetime):
-        raise NotImplementedError
-
-    def rollout(
-        self,
-        start_time: datetime.datetime,
-        n_steps: int = 3,
-        save: bool = True,
-    ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
         raise NotImplementedError

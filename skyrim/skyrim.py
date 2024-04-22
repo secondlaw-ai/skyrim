@@ -2,31 +2,11 @@ import datetime
 import os
 import dotenv
 from pathlib import Path
-from .models import (
-    PanguModel,
-    PanguPrediction,
-    FourcastnetV2Model,
-    FourcastnetV2Prediction,
-    DLWPModel,
-    DLWPPrediction,
-    GraphcastModel,
-    GraphcastPrediction,
-    FourcastnetModel,
-    FourcastnetPrediction,
-)
 from loguru import logger
-
+from .models import MODEL_FACTORY
 
 dotenv.load_dotenv()
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
-
-MODEL_FACTORY = {
-    "pangu": (PanguModel, PanguPrediction),
-    "fourcastnet": (FourcastnetModel, FourcastnetPrediction),
-    "fourcastnet_v2": (FourcastnetV2Model, FourcastnetV2Prediction),
-    "dlwp": (DLWPModel, DLWPPrediction),
-    "graphcast": (GraphcastModel, GraphcastPrediction),
-}
 
 
 def wrap_prediction(model_name, source):
@@ -57,6 +37,7 @@ class Skyrim:
         save: bool = False,
     ):
         # TODO: output dir should be configurable
+        # TODO: make data source configurable, e.g. cds, gfs, file, etc
 
         # Create datetime object using date and time arguments as start_time
         year = int(date[:4])
