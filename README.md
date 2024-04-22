@@ -1,18 +1,42 @@
+<h1 align="center">
+ 
+ <a href="https://www.2lw.ai">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/skyrim_22.png"/>
+    <img src="./assets/skyrim_22.png"/>
+  </picture>
+ </a>
+ <br></br>
+skyrim
+<br></br>
 
-<div align="center">
-    <h1>Skyrim</h1>
-    <img src="./assets/output_animation_ortho.gif" alt="skyrim" width="150px">
-</div>
+</h1>
+<p align="center">
 
+🌎🌍🌍 Best in class weather forecasting for all.
 
-This document serves as an internal progress tracker for the development of a wrapper library that integrates several publicly available models. The goal is to streamline the usage and evaluation of these models for our projects.
+Run masssive ensembles, simulations and build fine-tuned weather models on top of state-of-the-art foundational weather models.
 
-## Installation
+From SecondLaw Reseach✌️🔥.
 
-Pain is real. Suffering is optional. 
-TBA.
+</p>
 
-## Models to Wrap
+# Getting Started
+
+## Run your first forecast
+
+Currently, all supported models are running on the ECMWF ERA5 initial conditions. For each run, you will first pull the initial conditions of your interest (most recent one by default), then the model will run for the desired time step.
+
+To run for the next 24h given the most recent ERA5 initial conditions using `pangu` model:
+
+`python run.py -m pangu`
+
+See supported models section for more on the models.
+
+# Installation
+
+You will need a NVIDIA GPU with at least 16GB memory. Recommended setup is to start with a docker base image `pytorch/pytorch:2.2.2-cuda11.8-cudnn8-devel`. Then run the `build.sh` to be fully setup.
+
 ### License
 
 For detailed information regarding licensing, please refer to the license details provided on each model's main homepage, which we link to from each of the corresponding components within our repository.
@@ -26,6 +50,7 @@ For detailed information regarding licensing, please refer to the license detail
 - **Fuxi**: [Original](https://github.com/tpys/FuXi)
 
 ## Roadmap
+
 - [ ] interface to fetch real-time NWP-based predictions, e.g. via ECMWF API.
 - [ ] global model performance comparison across various regions and parameters.
 - [ ] ensemble prediction

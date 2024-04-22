@@ -1,29 +1,33 @@
+# Base image with CUDA support
 FROM pytorch/pytorch:2.2.2-cuda11.8-cudnn8-devel
-
-# Set environment variables for Git username and token
-ARG GIT_USERNAME
-ARG GIT_TOKEN
-
-# Use environment variables to configure Git and clone the repository
-RUN git clone https://${GIT_USERNAME}:${GIT_TOKEN}@github.com/m13uz/skyrim.git
+WORKDIR /app
+SHELL ["/bin/bash", "-c"]
+RUN conda create -y -n sky python=3.10 && \
+    echo "source activate sky" >> ~/.bashrc
 
 # Clone the Earth2Mip repository and checkout a specific commit
 RUN git clone https://github.com/NVIDIA/earth2mip.git && \
     cd earth2mip && \
-    git checkout 86b11fe && \
+    git checkout 86b11fe
+
+# Activate Conda environment and install dependencies
+RUN source activate sky && \
     pip install . && \
-    pip install -r requirements.txt && \
+    pip install -r earth2mip/requirements.txt && \
     pip install ruamel.yaml && \
-    pip install .[pangu,graphcast]
+    pip install earth2mip/[pangu,graphcast]
 
-# Install specific Jax library from a URL
-RUN pip install https://storage.googleapis.com/jax-releases/cuda11/jaxlib-0.4.16+cuda11.cudnn86-cp310-cp310-manylinux2014_x86_64.whl
+# Install specific Jax library for CUDA 11
+RUN source activate sky && \
+    pip install https://storage.googleapis.com/jax-releases/cuda11/jaxlib-0.4.16+cuda11.cudnn86-cp310-cp310-manylinux2014_x86_64.whl
 
-# Install PyTorch with a specific CUDA version (2.2.2+11.8 for CUDA 11.8)
-RUN pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --force-reinstall
+# Reinstall PyTorch with a specific CUDA version
+RUN source activate sky && \
+    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118 --force-reinstall
 
 # Clone and install NVIDIA Apex with custom build options
-RUN git clone https://github.com/NVIDIA/apex && \
+RUN source activate sky && \
+    git clone https://github.com/NVIDIA/apex && \
     cd apex && \
     pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation \
         --config-settings "--build-option=--cpp_ext" \
@@ -31,5 +35,5 @@ RUN git clone https://github.com/NVIDIA/apex && \
     cd .. && \
     rm -rf ./apex  # Clean up Apex source after installation
 
-# docker build --build-arg GIT_USERNAME="your_username" --build-arg GIT_TOKEN="your_token" -t your_image_name .
-CMD ['python', 'run.py', '-m', 'fcn']
+# Run command to execute script with Python in the Conda environment
+CMD ["bash", "-c", "source activate sky && python run.py -m fcn"]
