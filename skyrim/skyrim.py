@@ -39,6 +39,9 @@ class Skyrim:
         else:
             raise ValueError("Invalid model name. Must be a string or a list of strings.")
 
+    def __repr__(self) -> str:
+        return f"Skyrim({self.model_name})"
+    
     @staticmethod
     def list_available_models():
         return list(MODEL_FACTORY.keys())

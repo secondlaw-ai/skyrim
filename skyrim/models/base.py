@@ -231,6 +231,7 @@ class GlobalPrediction:
 class GlobalPredictionRollout:
     def __init__(self, rollout: list[str | Path | xr.DataArray]):
         self.rollout = [GlobalPrediction(source) for source in rollout]
+        self.time_steps = [r.prediction.time.values[-1] for r in self.rollout]
     
     def wind_speed(
         self,
