@@ -4,26 +4,40 @@ import dotenv
 from pathlib import Path
 from loguru import logger
 from .models import MODEL_FACTORY
+from .models.ensemble import GlobalEnsemblePrediction, GlobalEnsemble
 
 dotenv.load_dotenv()
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
 
 def wrap_prediction(model_name, source):
-    if model_name in MODEL_FACTORY:
-        return MODEL_FACTORY[model_name][1](source)
+    if isinstance(model_name, str):
+        if model_name in MODEL_FACTORY:
+            return MODEL_FACTORY[model_name][1](source)
+        else:
+            raise ValueError(f"Model name {model_name} is not supported.")
+    elif isinstance(model_name, list):
+        return GlobalEnsemblePrediction(source)
     else:
-        raise ValueError(f"Model name {model_name} is not supported.")
+        raise ValueError("Invalid model name. Must be a string or a list of strings.")
 
 
 class Skyrim:
     def __init__(self, model_name: str):
+        
         self.model_name = model_name
-        if model_name in MODEL_FACTORY:
-            logger.debug(f"Initializing {model_name} model")
-            self.model = MODEL_FACTORY[model_name][0]()
+        
+        if isinstance(model_name, list):
+            logger.info(f"Initializing ensemble model with {model_name}")
+            self.model = GlobalEnsemble(model_name)
+        elif isinstance(model_name, str):
+            if model_name in MODEL_FACTORY:
+                logger.debug(f"Initializing {model_name} model")
+                self.model = MODEL_FACTORY[model_name][0]()
+            else:
+                raise ValueError(f"Model name {model_name} is not supported.")
         else:
-            raise ValueError(f"Model name {model_name} is not supported.")
+            raise ValueError("Invalid model name. Must be a string or a list of strings.")
 
     @staticmethod
     def list_available_models():
@@ -31,14 +45,15 @@ class Skyrim:
 
     def predict(
         self,
-        date: str,  # HHMM, e.g. 0300, 1400, etc
-        time: str,  # YYYMMDD, e.g. 20180101
+        date: str,   # YYYMMDD, e.g. 20180101 
+        time: str, # HHMM, e.g. 0300, 1400, etc
         lead_time: int = 6,  # in hours 0-24, will be clipped to nearest 6 multiple
         save: bool = False,
     ):
         # TODO: output dir should be configurable
         # TODO: make data source configurable, e.g. cds, gfs, file, etc
-
+        # TODO: adjust lead time using self. model.time_step
+        
         # Create datetime object using date and time arguments as start_time
         year = int(date[:4])
         month = int(date[4:6])

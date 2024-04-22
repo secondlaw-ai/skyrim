@@ -7,6 +7,20 @@ from earth2mip.initial_conditions import cds, get_initial_condition_for_model
 import earth2mip.networks.graphcast as graphcast
 from .base import GlobalModel, GlobalPrediction
 
+# fmt: off
+
+CHANNELS = ["z50", "z100", "z150", "z200", "z250", "z300", "z400", "z500", "z600", "z700",
+            "z850", "z925", "z1000", "q50", "q100", "q150", "q200", "q250", "q300", "q400",
+            "q500", "q600", "q700", "q850", "q925", "q1000", "t50", "t100", "t150", "t200",
+            "t250", "t300", "t400", "t500", "t600", "t700", "t850", "t925", "t1000", "u50",
+            "u100", "u150", "u200", "u250", "u300", "u400", "u500", "u600", "u700", "u850",
+            "u925", "u1000", "v50", "v100", "v150", "v200", "v250", "v300", "v400", "v500",
+            "v600", "v700", "v850", "v925", "v1000", "w50", "w100", "w150", "w200", "w250",
+            "w300", "w400", "w500", "w600", "w700", "w850", "w925", "w1000", "u10m", "v10m",
+            "t2m", "msl","tp06",
+            ]
+# fmt: on
+
 
 class GraphcastModel(GlobalModel):
     def __init__(self, model_name: str = "graphcast"):

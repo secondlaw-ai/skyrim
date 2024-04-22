@@ -43,6 +43,9 @@ class GlobalModel:
     @property
     def out_channel_names(self):
         raise NotImplementedError
+    
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(model_name={self.model_name})"
 
     def predict_one_step(
         self,
@@ -60,6 +63,7 @@ class GlobalModel:
         # it does not make sense to keep all the results in the memory
         # return final pred and list of paths of the saved predictions
         # TODO: add functionality to rollout from a given initial condition
+        # TODO: support other sources than cds, e.g. ifs, gfs, file, etc
 
         pred, output_paths, source = None, [], "cds"
         for n in range(n_steps):
@@ -106,12 +110,12 @@ class GlobalModel:
 
 
 class GlobalPrediction:
-    filepath: str = None
+    filepath: Path = None
     prediction: xr.Dataset | xr.DataArray = None
 
     def __init__(self, source):
-        if isinstance(source, str):
-            self.filepath = source
+        if isinstance(source, (str, Path)):
+            self.filepath = Path(source)
             self.prediction = xr.open_dataarray(source).squeeze()
 
         elif isinstance(source, xr.Dataset) or isinstance(source, xr.DataArray):
@@ -131,6 +135,11 @@ class GlobalPrediction:
     @property
     def channel(self):
         return self.prediction.channel
+    
+    def __repr__(self) -> str:
+        # This shows the filepath if it exists or the type and size of the prediction if not
+        source_info = self.filepath if self.filepath else f"{type(self.prediction).__name__} with shape {self.prediction.shape}"
+        return f"{self.__class__.__name__}(source={source_info})"
 
     def slice(
         self,
@@ -205,8 +214,33 @@ class GlobalPrediction:
         u = self.point(lat=lat, lon=lon, channel=u_channel, n_step=n_step)
         v = self.point(lat=lat, lon=lon, channel=v_channel, n_step=n_step)
         return u, v
-
+    
+    def wind_speed(
+        self,
+        lat: float,
+        lon: float,
+        pressure_level: int = 1000, 
+        n_step: int | None = 1,
+    ):
+        # NOTE: pressure level is in hPa
+        # TODO: add functionality to estimate pressure from height
+        u, v = self.point_wind_uv(lat, lon, pressure_level, n_step)
+        return (u ** 2 + v ** 2) ** 0.5
+    
 
 class GlobalPredictionRollout:
-    def __init__(self, rollout: list[str | xr.DataArray]):
-        raise NotImplementedError
+    def __init__(self, rollout: list[str | Path | xr.DataArray]):
+        self.rollout = [GlobalPrediction(source) for source in rollout]
+    
+    def wind_speed(
+        self,
+        lat: float,
+        lon: float,
+        pressure_level: int = 1000, 
+        n_step: int | None = 1,
+    ):
+        # NOTE: pressure level is in hPa
+        return [pred.wind_speed(lat, lon, pressure_level, n_step) for pred in self.rollout]
+    
+    
+    

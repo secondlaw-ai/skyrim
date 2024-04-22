@@ -9,10 +9,19 @@ from .base import GlobalModel, GlobalPrediction
 import sys
 from .utils import run_basic_inference
 
+# 
+# fmt: off
+# https://github.com/NVIDIA/earth2mip/blob/86b11fe4ba2f19641802112e8b0ba6b962123130/earth2mip/networks/fcn.py#L28-L55
+CHANNELS = ["u10m", "v10m", "t2m", "sp", "msl", "t850", "u1000", "v1000", "z1000", "u850", 
+            "v850", "z850", "u500", "v500", "z500", "t500", "z50", "r500", "r850", "tcwv", 
+            "u100m", "v100m", "u250", "v250", "z250","t250"]
+# fmt: on
 
 class FourcastnetModel(GlobalModel):
-    def __init__(self, model_name: str = "fourcastnet"):
-        super().__init__(model_name)
+    model_name = "fourcastnet"
+    
+    def __init__(self):
+        super().__init__(self.model_name)
 
     def build_model(self):
         return fcn.load(registry.get_model("e2mip://fcn"))
@@ -50,3 +59,4 @@ class FourcastnetPrediction(GlobalPrediction):
     def __init__(self, source):
         super().__init__(source)
         self.model_name = "fourcastnet"
+        

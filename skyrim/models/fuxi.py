@@ -18,8 +18,10 @@ CHANNELS = ['Z50', 'Z100', 'Z150', 'Z200', 'Z250', 'Z300', 'Z400', 'Z500', 'Z600
 
 
 class FuxiModel(GlobalModel):
-    def __init__(self, model_name: str = "fuxi"):
-        super().__init__(model_name)
+    model_name = "fuxi"
+    
+    def __init__(self): 
+        super().__init__(self.model_name)
 
     def build_model(self):
         return
@@ -50,7 +52,5 @@ class FuxiModel(GlobalModel):
 class FuxiPrediction(GlobalPrediction):
     def __init__(self, source):
         super().__init__(source)
-        self.model_name = "pangu"
+        self.model_name = "fuxi"
 
-    def __repr__(self) -> str:
-        return f"PanguPrediction({self.prediction.shape})"
