@@ -1,6 +1,6 @@
 <h1 align="center">
  
- <a href="https://www.2lw.ai">
+ <a href="https://www.secondlaw.xyz/">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/skyrim_22.png"/>
     <img src="./assets/skyrim_22.png"/>
