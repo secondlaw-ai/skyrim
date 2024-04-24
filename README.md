@@ -29,9 +29,25 @@ Currently, all supported models are running on the ECMWF ERA5 initial conditions
 
 To run for the next 24h given the most recent ERA5 initial conditions using `pangu` model:
 
-`python run.py -m pangu`
+`python run.py --model pangu --date 20180101`
 
 See supported models section for more on the models.
+
+Importing Skyrim in python:
+
+```python
+from skyrim import Skyrim
+
+# to see all the available models
+print(Skyrim.list_available_models())
+
+# initialize pangu model
+model = Skyrim("pangu")
+
+# rollout predictions from a date and time of your choice
+pred, output_paths = model.predict(date="20180101", time="0000",lead_time=24, save=True)
+
+```
 
 # Installation
 
@@ -66,3 +82,11 @@ For detailed information regarding licensing, please refer to the license detail
 - [ ] model quantization and its effect on model efficiency and accuracy.
 
 This README will be updated regularly to reflect the progress and integration of new models or features into the library. It serves as a guide for internal development efforts and aids in prioritizing tasks and milestones.
+
+## Acknowledgements
+Skyrim is built on top of NVIDIA's [earth2mip](https://github.com/NVIDIA/earth2mip) and ECMWF's [ai-models](https://github.com/ecmwf-lab/ai-models). Definitely check them out!
+
+## Other Useful Resources
+* [🌍 Awesome Large Weather Models (LWMs) | AI for Earth (AI4Earth) | AI for Science (AI4Science)](http://github.com/jaychempan/Awesome-LWMs)
+* [Climate Data Store](https://cds.climate.copernicus.eu/)
+* 

@@ -1,0 +1,4 @@
+earth2mip @ git+https://github.com/NVIDIA/earth2mip.git@86b11fe4ba2f19641802112e8b0ba6b962123130#earth2mip[pangu,graphcast]
+-f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+jax[cuda12_local]==0.4.16
+pytest-regtest==1.5.1

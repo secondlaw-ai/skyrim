@@ -24,9 +24,9 @@ def wrap_prediction(model_name, source):
 
 class Skyrim:
     def __init__(self, model_name: str):
-        
+
         self.model_name = model_name
-        
+
         if isinstance(model_name, list):
             logger.info(f"Initializing ensemble model with {model_name}")
             self.model = GlobalEnsemble(model_name)
@@ -37,26 +37,28 @@ class Skyrim:
             else:
                 raise ValueError(f"Model name {model_name} is not supported.")
         else:
-            raise ValueError("Invalid model name. Must be a string or a list of strings.")
+            raise ValueError(
+                "Invalid model name. Must be a string or a list of strings."
+            )
 
     def __repr__(self) -> str:
         return f"Skyrim({self.model_name})"
-    
+
     @staticmethod
     def list_available_models():
         return list(MODEL_FACTORY.keys())
 
     def predict(
         self,
-        date: str,   # YYYMMDD, e.g. 20180101 
-        time: str, # HHMM, e.g. 0300, 1400, etc
+        date: str,  # YYYMMDD, e.g. 20180101
+        time: str,  # HHMM, e.g. 0300, 1400, etc
         lead_time: int = 6,  # in hours 0-24, will be clipped to nearest 6 multiple
         save: bool = False,
     ):
-        # TODO: output dir should be configurable
+        # TODO: output dir should be configurable, currently hardcoded to outputs/{model_name}/*
         # TODO: make data source configurable, e.g. cds, gfs, file, etc
-        # TODO: adjust lead time using self. model.time_step
-        
+        # TODO: add checks for date and time format
+
         # Create datetime object using date and time arguments as start_time
         year = int(date[:4])
         month = int(date[4:6])

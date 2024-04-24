@@ -1,6 +1,7 @@
 import datetime
 from pathlib import Path
 import xarray as xr
+from loguru import logger
 
 from earth2mip import registry
 from earth2mip.initial_conditions import cds, get_initial_condition_for_model
@@ -23,6 +24,8 @@ CHANNELS = ["z50", "z100", "z150", "z200", "z250", "z300", "z400", "z500", "z600
 
 
 class GraphcastModel(GlobalModel):
+    # TODO: implement rollout
+
     def __init__(self, model_name: str = "graphcast"):
         super().__init__(model_name)
 
@@ -57,26 +60,45 @@ class GraphcastModel(GlobalModel):
         # https://github.com/NVIDIA/earth2mip/blob/86b11fe4ba2f19641802112e8b0ba6b962123130/earth2mip/time_loop.py#L114-L122
 
         self.stepper = self.model.stepper
-        x = get_initial_condition_for_model(
-            time_loop=self.model,
-            data_source=self.data_source,
-            time=start_time,
-        )
+        if initial_condition is None:
+            initial_condition = get_initial_condition_for_model(
+                time_loop=self.model,
+                data_source=self.data_source,
+                time=start_time,
+            )
+            state = self.stepper.initialize(initial_condition, start_time)
 
-        state = self.stepper.initialize(x, start_time)
+        else:
+            state = initial_condition
+
         state, output = self.stepper.step(state)
         # output.shape: torch.Size([1, 83, 721, 1440])
         # len(state): 3,
         # state[0]: Timestamp('2018-01-02 06:00:00')
-        return state[1]
+        # return state[1]
+        return state
 
     def rollout(
         self, start_time: datetime.datetime, n_steps: int = 3, save: bool = True
     ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
-        raise NotImplementedError
+        # TODO:
+        pred, output_paths, source = None, [], "cds"
+        for n in range(n_steps):
+            # returns a state tuple
+            pred = self.predict_one_step(start_time, initial_condition=pred)
+            pred_time = start_time + self.time_step
+            if save:
+                # pred[1] is the xr.DataSet that we want to save for now
+                # we should first using channel names to map this DataSet to our regular DataArray
+                output_path = self.save_output(pred[1], start_time, pred_time, source)
+                start_time, source = pred_time, "file"
+                output_paths.append(output_path)
+            logger.success(f"Rollout step {n+1}/{n_steps} completed")
+        return pred, output_paths
 
 
 class GraphcastPrediction(GlobalPrediction):
+    # TODO: to be able to use the same GlobalPrediction interface, we need to map graph
     def __init__(self, source):
         if isinstance(source, str):
             self.filepath = source
