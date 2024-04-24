@@ -35,7 +35,16 @@ See supported models section for more on the models.
 
 # Installation
 
-You will need a NVIDIA GPU with at least 16GB memory. Recommended setup is to start with a docker base image `pytorch/pytorch:2.2.2-cuda11.8-cudnn8-devel`. Then run the `build.sh` to be fully setup.
+You will need a NVIDIA GPU with at least 16GB memory, ideally 24GB. 
+
+## Bare metal
+1. Start with a docker base image `pytorch/pytorch:2.2.2-cuda11.8-cudnn8-devel`. 
+2. Then clone the repo and run `./build.sh`.
+
+## vast.ai setup
+1. Find a machine you like RTX3090 or above with at least 24GB memory. Make sure you have good bandwith (+500MB/s).
+2. Select the instance template from [here](https://cloud.vast.ai/?ref_id=128656&template_id=1883215a8487ec6ea9ad68a7cdb38c5e).
+3. Then clone the repo and `pip install .`
 
 ### License
 
