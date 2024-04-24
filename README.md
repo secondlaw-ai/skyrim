@@ -57,3 +57,6 @@ For detailed information regarding licensing, please refer to the license detail
 - [ ] model quantization and its effect on model efficiency and accuracy.
 
 This README will be updated regularly to reflect the progress and integration of new models or features into the library. It serves as a guide for internal development efforts and aids in prioritizing tasks and milestones.
+
+## Acknowledgements
+Skyrim is built on top of NVIDIA's [earth2mip](https://github.com/NVIDIA/earth2mip) and ECMWF's (ai-models)[https://github.com/ecmwf-lab/ai-models]. Definitely check them out!
