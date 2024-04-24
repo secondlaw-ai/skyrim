@@ -66,24 +66,31 @@ class GraphcastModel(GlobalModel):
                 data_source=self.data_source,
                 time=start_time,
             )
+            state = self.stepper.initialize(initial_condition, start_time)
 
-        state = self.stepper.initialize(initial_condition, start_time)
+        else:
+            state = initial_condition
+
         state, output = self.stepper.step(state)
         # output.shape: torch.Size([1, 83, 721, 1440])
         # len(state): 3,
         # state[0]: Timestamp('2018-01-02 06:00:00')
-        
+        # return state[1]
         return state
 
     def rollout(
         self, start_time: datetime.datetime, n_steps: int = 3, save: bool = True
     ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
+        # TODO:
         pred, output_paths, source = None, [], "cds"
         for n in range(n_steps):
+            # returns a state tuple
             pred = self.predict_one_step(start_time, initial_condition=pred)
             pred_time = start_time + self.time_step
             if save:
-                output_path = self.save_output(pred, start_time, pred_time, source)
+                # pred[1] is the xr.DataSet that we want to save for now
+                # we should first using channel names to map this DataSet to our regular DataArray
+                output_path = self.save_output(pred[1], start_time, pred_time, source)
                 start_time, source = pred_time, "file"
                 output_paths.append(output_path)
             logger.success(f"Rollout step {n+1}/{n_steps} completed")
