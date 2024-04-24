@@ -60,17 +60,19 @@ class GraphcastModel(GlobalModel):
         # https://github.com/NVIDIA/earth2mip/blob/86b11fe4ba2f19641802112e8b0ba6b962123130/earth2mip/time_loop.py#L114-L122
 
         self.stepper = self.model.stepper
-        x = get_initial_condition_for_model(
-            time_loop=self.model,
-            data_source=self.data_source,
-            time=start_time,
-        )
+        if initial_condition is None:
+            initial_condition = get_initial_condition_for_model(
+                time_loop=self.model,
+                data_source=self.data_source,
+                time=start_time,
+            )
 
-        state = self.stepper.initialize(x, start_time)
+        state = self.stepper.initialize(initial_condition, start_time)
         state, output = self.stepper.step(state)
         # output.shape: torch.Size([1, 83, 721, 1440])
         # len(state): 3,
         # state[0]: Timestamp('2018-01-02 06:00:00')
+        
         return state
 
     def rollout(
