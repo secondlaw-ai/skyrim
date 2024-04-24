@@ -35,7 +35,7 @@ See supported models section for more on the models.
 
 Importing Skyrim in python:
 
-```
+```python
 from skyrim import Skyrim
 
 # to see all the available models
