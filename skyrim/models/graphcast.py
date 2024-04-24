@@ -1,6 +1,7 @@
 import datetime
 from pathlib import Path
 import xarray as xr
+from loguru import logger
 
 from earth2mip import registry
 from earth2mip.initial_conditions import cds, get_initial_condition_for_model
@@ -23,6 +24,8 @@ CHANNELS = ["z50", "z100", "z150", "z200", "z250", "z300", "z400", "z500", "z600
 
 
 class GraphcastModel(GlobalModel):
+    # TODO: implement rollout
+
     def __init__(self, model_name: str = "graphcast"):
         super().__init__(model_name)
 
@@ -68,15 +71,25 @@ class GraphcastModel(GlobalModel):
         # output.shape: torch.Size([1, 83, 721, 1440])
         # len(state): 3,
         # state[0]: Timestamp('2018-01-02 06:00:00')
-        return state[1]
+        return state
 
     def rollout(
         self, start_time: datetime.datetime, n_steps: int = 3, save: bool = True
     ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
-        raise NotImplementedError
+        pred, output_paths, source = None, [], "cds"
+        for n in range(n_steps):
+            pred = self.predict_one_step(start_time, initial_condition=pred)
+            pred_time = start_time + self.time_step
+            if save:
+                output_path = self.save_output(pred, start_time, pred_time, source)
+                start_time, source = pred_time, "file"
+                output_paths.append(output_path)
+            logger.success(f"Rollout step {n+1}/{n_steps} completed")
+        return pred, output_paths
 
 
 class GraphcastPrediction(GlobalPrediction):
+    # TODO: to be able to use the same GlobalPrediction interface, we need to map graph
     def __init__(self, source):
         if isinstance(source, str):
             self.filepath = source
