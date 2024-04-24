@@ -1,12 +1,12 @@
 import datetime
 import os
-import dotenv
+from dotenv import load_dotenv
 from pathlib import Path
 from loguru import logger
 from .models import MODEL_FACTORY
 from .models.ensemble import GlobalEnsemblePrediction, GlobalEnsemble
 
-dotenv.load_dotenv()
+load_dotenv()
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
 
