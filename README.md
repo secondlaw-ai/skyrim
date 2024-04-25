@@ -90,3 +90,4 @@ Skyrim is built on top of NVIDIA's [earth2mip](https://github.com/NVIDIA/earth2m
 * [🌍 Awesome Large Weather Models (LWMs) | AI for Earth (AI4Earth) | AI for Science (AI4Science)](http://github.com/jaychempan/Awesome-LWMs)
 * [Climate Data Store](https://cds.climate.copernicus.eu/)
 * [Open Climate Fix](https://github.com/openclimatefix)
+* [Herbie](https://github.com/blaylockbk/Herbie)
