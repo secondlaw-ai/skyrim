@@ -43,9 +43,6 @@ class PanguModel(GlobalModel):
     def build_model(self):
         return pangu.load(registry.get_model("e2mip://pangu"))
 
-    def build_datasource(self):
-        return cds.DataSource(self.model.in_channel_names)
-
     @property
     def time_step(self):
         return self.model.time_step

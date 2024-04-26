@@ -2,6 +2,7 @@ import argparse
 from skyrim import Skyrim
 from skyrim.utils import ensure_cds_loaded
 from dotenv import load_dotenv
+from earth2mip.schema import InitialConditionSource
 
 load_dotenv()
 
@@ -23,7 +24,7 @@ if __name__ == "__main__":
         "--date",
         "-s",
         type=str,
-        default="20180101",
+        default="20240426",
         help="YYYYMMDD",
     )
     parser.add_argument(
@@ -46,6 +47,15 @@ if __name__ == "__main__":
         action="store_true",
         help="List all available models and exit",
     )
+    parser.add_argument(
+        "--initial_conditions",
+        "-ic",
+        type=str,
+        choices=["cds", "ifs", "gfs"],
+        default="cds",
+        help="Initial conditions provider.",
+    )
+
 
     args = parser.parse_args()
 
@@ -56,8 +66,7 @@ if __name__ == "__main__":
 
     # initialize the model
     ensure_cds_loaded()
-    model = Skyrim(model_name=args.model_name)
-
+    model = Skyrim(args.model_name, ic_provider=InitialConditionSource(args.initial_conditions))
     # NOTE: the input state is fetched from cds by default
     pred = model.predict(
         date=args.date,

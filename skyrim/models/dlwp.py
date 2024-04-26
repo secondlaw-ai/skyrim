@@ -18,9 +18,6 @@ class DLWPModel(GlobalModel):
     def build_model(self):
         return dlwp.load(registry.get_model("e2mip://fcn"))
 
-    def build_datasource(self):
-        return cds.DataSource(self.model.in_channel_names)
-
     @property
     def time_step(self):
         return self.model.time_step

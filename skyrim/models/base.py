@@ -1,10 +1,12 @@
 import time
 import datetime
+import xarray as xr
 from typing import Literal
+from ..consts import IcProvider
 from pathlib import Path
 from loguru import logger
-import xarray as xr
-
+from earth2mip import schema
+from ..libs.ic import get_data_source
 OUTPUT_DIR = Path(__file__).parent.parent.parent.resolve() / Path("./outputs")
 
 if not OUTPUT_DIR.exists():
@@ -13,11 +15,11 @@ if not OUTPUT_DIR.exists():
 
 
 class GlobalModel:
-    def __init__(self, model_name: str):
+    def __init__(self, model_name: str, ic_provider: schema.InitialConditionSource = schema.InitialConditionSource.cds):
         clock = time.time()
         self.model_name = model_name
         self.model = self.build_model()
-        self.data_source = self.build_datasource()
+        self.data_source = self.build_datasource(ic_provider)
         logger.success(f"Initialized {model_name} in {time.time() - clock:.1f} seconds")
 
     def build_model(self):
@@ -26,11 +28,11 @@ class GlobalModel:
         """
         raise NotImplementedError
 
-    def build_datasource(self):
+    def build_datasource(self, ic_provider: schema.InitialConditionSource):
         """
         Build or load the data source configuration and components.
         """
-        raise NotImplementedError
+        return get_data_source(self.model.in_channel_names, initial_condition_source=ic_provider)
 
     @property
     def time_step(self):
@@ -58,14 +60,12 @@ class GlobalModel:
         self,
         start_time: datetime.datetime,
         n_steps: int = 3,
-        save: bool = True,
+        save: bool = True
     ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
         # it does not make sense to keep all the results in the memory
         # return final pred and list of paths of the saved predictions
         # TODO: add functionality to rollout from a given initial condition
-        # TODO: support other sources than cds, e.g. ifs, gfs, file, etc
-
-        pred, output_paths, source = None, [], "cds"
+        pred, output_paths, source = None, [], 'cds'
         for n in range(n_steps):
             pred = self.predict_one_step(start_time, initial_condition=pred)
             pred_time = start_time + self.time_step
