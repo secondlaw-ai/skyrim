@@ -31,7 +31,7 @@ class Skyrim:
             self.model_name = models
             self.model = GlobalEnsemble(models)
 
-        logger.debug(f"Initializing {model} model with IC from {ic_provider}")
+        logger.debug(f"Initializing {model} model with IC from {InitialConditionSource(ic_provider).value.capitalize()}")
         self.model_name = model
         self.model = MODEL_FACTORY[model][0](ic_provider=InitialConditionSource(ic_provider))
 

@@ -86,15 +86,17 @@ def get(time: datetime.datetime, channels: List[str]):
     channel_data = [
         _get_channel(
             c,
-            z=dataset_0h.gh * 9.81,
+            z=dataset_0h.gh * 9.807,
             u=dataset_0h.u,
             v=dataset_0h.v,
+            q=dataset_0h.q, # pangu
+            w=dataset_0h.w, # graphcast
             u10m=dataset_0h.sel(isobaricInhPa=1000.0).u,
             v10m=dataset_0h.sel(isobaricInhPa=1000.0).v,
             u100m=dataset_0h.sel(isobaricInhPa=1000.0).u,
             v100m=dataset_0h.sel(isobaricInhPa=1000.0).v,
             sp=dataset_0h.sp,
-            t2m=forecast_12h.sel(isobaricInhPa=1000.0).t, # t2m is not found in forecast..
+            t2m=forecast_12h.sel(isobaricInhPa=1000.0).t,
             msl=forecast_12h.msl,
             tcwv=forecast_12h.tcwv,
             t=dataset_0h.t,
