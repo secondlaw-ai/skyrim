@@ -20,6 +20,7 @@ class GlobalModel:
         self.model_name = model_name
         self.model = self.build_model()
         self.data_source = self.build_datasource(ic_provider)
+        self.ic_source = ic_provider.value
         logger.success(f"Initialized {model_name} in {time.time() - clock:.1f} seconds")
 
     def build_model(self):
@@ -65,7 +66,7 @@ class GlobalModel:
         # it does not make sense to keep all the results in the memory
         # return final pred and list of paths of the saved predictions
         # TODO: add functionality to rollout from a given initial condition
-        pred, output_paths, source = None, [], 'cds'
+        pred, output_paths, source = None, [], self.ic_source
         for n in range(n_steps):
             pred = self.predict_one_step(start_time, initial_condition=pred)
             pred_time = start_time + self.time_step
@@ -87,7 +88,6 @@ class GlobalModel:
         # e.g.:
         # filename = "pangu__20180101_00:00__20180101_06:00.nc"
         # output_path = "./outputs/pangu/pangu__20180101_00:00__20180101_06:00.nc"
-
         filename = (
             f"{self.model_name}" + "__"
             f"{source}__"
