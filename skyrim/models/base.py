@@ -6,6 +6,7 @@ from pathlib import Path
 from loguru import logger
 from earth2mip import schema
 from ..libs.ic import get_data_source
+
 OUTPUT_DIR = Path(__file__).parent.parent.parent.resolve() / Path("./outputs")
 
 if not OUTPUT_DIR.exists():
@@ -14,7 +15,11 @@ if not OUTPUT_DIR.exists():
 
 
 class GlobalModel:
-    def __init__(self, model_name: str, ic_provider: schema.InitialConditionSource = schema.InitialConditionSource.cds):
+    def __init__(
+        self,
+        model_name: str,
+        ic_provider: schema.InitialConditionSource = schema.InitialConditionSource.cds,
+    ):
         clock = time.time()
         self.model_name = model_name
         self.model = self.build_model()
@@ -32,7 +37,9 @@ class GlobalModel:
         """
         Build or load the data source configuration and components.
         """
-        return get_data_source(self.model.in_channel_names, initial_condition_source=ic_provider)
+        return get_data_source(
+            self.model.in_channel_names, initial_condition_source=ic_provider
+        )
 
     @property
     def time_step(self):
@@ -45,7 +52,7 @@ class GlobalModel:
     @property
     def out_channel_names(self):
         raise NotImplementedError
-    
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(model_name={self.model_name})"
 
@@ -57,10 +64,7 @@ class GlobalModel:
         raise NotImplementedError
 
     def rollout(
-        self,
-        start_time: datetime.datetime,
-        n_steps: int = 3,
-        save: bool = True
+        self, start_time: datetime.datetime, n_steps: int = 3, save: bool = True
     ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
         # it does not make sense to keep all the results in the memory
         # return final pred and list of paths of the saved predictions
@@ -134,10 +138,14 @@ class GlobalPrediction:
     @property
     def channel(self):
         return self.prediction.channel
-    
+
     def __repr__(self) -> str:
         # This shows the filepath if it exists or the type and size of the prediction if not
-        source_info = self.filepath if self.filepath else f"{type(self.prediction).__name__} with shape {self.prediction.shape}"
+        source_info = (
+            self.filepath
+            if self.filepath
+            else f"{type(self.prediction).__name__} with shape {self.prediction.shape}"
+        )
         return f"{self.__class__.__name__}(source={source_info})"
 
     def slice(
@@ -213,34 +221,33 @@ class GlobalPrediction:
         u = self.point(lat=lat, lon=lon, channel=u_channel, n_step=n_step)
         v = self.point(lat=lat, lon=lon, channel=v_channel, n_step=n_step)
         return u, v
-    
+
     def wind_speed(
         self,
         lat: float,
         lon: float,
-        pressure_level: int = 1000, 
+        pressure_level: int = 1000,
         n_step: int | None = 1,
     ):
         # NOTE: pressure level is in hPa
         # TODO: add functionality to estimate pressure from height
         u, v = self.point_wind_uv(lat, lon, pressure_level, n_step)
-        return (u ** 2 + v ** 2) ** 0.5
-    
+        return (u**2 + v**2) ** 0.5
+
 
 class GlobalPredictionRollout:
     def __init__(self, rollout: list[str | Path | xr.DataArray]):
         self.rollout = [GlobalPrediction(source) for source in rollout]
         self.time_steps = [r.prediction.time.values[-1] for r in self.rollout]
-    
+
     def wind_speed(
         self,
         lat: float,
         lon: float,
-        pressure_level: int = 1000, 
+        pressure_level: int = 1000,
         n_step: int | None = 1,
     ):
         # NOTE: pressure level is in hPa
-        return [pred.wind_speed(lat, lon, pressure_level, n_step) for pred in self.rollout]
-    
-    
-    
+        return [
+            pred.wind_speed(lat, lon, pressure_level, n_step) for pred in self.rollout
+        ]

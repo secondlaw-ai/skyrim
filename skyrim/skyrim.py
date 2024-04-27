@@ -5,6 +5,7 @@ from loguru import logger
 from .models import MODEL_FACTORY
 from .models.ensemble import GlobalEnsemblePrediction, GlobalEnsemble
 from earth2mip.schema import InitialConditionSource
+
 load_dotenv()
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
@@ -19,21 +20,30 @@ def wrap_prediction(model_name, source):
         return GlobalEnsemblePrediction(source)
     else:
         raise ValueError("Invalid model name. Must be a string or a list of strings.")
-    
+
+
 class Skyrim:
-    def __init__(self, *models: str, ic_provider: InitialConditionSource | str = InitialConditionSource.cds):
+    def __init__(
+        self,
+        *models: str,
+        ic_provider: InitialConditionSource | str = InitialConditionSource.cds,
+    ):
         for model in models:
             if not model in MODEL_FACTORY:
                 raise ValueError(f"Model {model} is not supported.")
-            
+
         if len(models) > 1:
             logger.info(f"Initializing ensemble model with {models}")
             self.model_name = models
             self.model = GlobalEnsemble(models)
 
-        logger.debug(f"Initializing {model} model with IC from {InitialConditionSource(ic_provider).value.capitalize()}")
+        logger.debug(
+            f"Initializing {model} model with IC from {InitialConditionSource(ic_provider).value.capitalize()}"
+        )
         self.model_name = model
-        self.model = MODEL_FACTORY[model][0](ic_provider=InitialConditionSource(ic_provider))
+        self.model = MODEL_FACTORY[model][0](
+            ic_provider=InitialConditionSource(ic_provider)
+        )
 
     def __repr__(self) -> str:
         return f"Skyrim({self.model_name})"
@@ -47,7 +57,7 @@ class Skyrim:
         date: str,  # YYYMMDD, e.g. 20180101
         time: str,  # HHMM, e.g. 0300, 1400, etc
         lead_time: int = 6,  # in hours 0-24, will be clipped to nearest 6 multiple
-        save: bool = False
+        save: bool = False,
     ):
         # TODO: output dir should be configurable, currently hardcoded to outputs/{model_name}/*
         # TODO: add checks for date and time format

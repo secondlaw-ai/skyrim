@@ -1,0 +1,60 @@
+[project]
+name = "Skyrim"
+version = "0.1.0"
+description = "AI weather models united."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+maintainers = [{ name = "SecondLaw Research", email = "efe@2lw.ai" }]
+
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["skyrim", "skyrim.*"]
+
+[project.optional-dependencies]
+dev = ["black", "ruff", "pytest", "tox"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+skip-string-normalization = false
+skip-magic-trailing-comma = false
+include = '\.pyi?$'
+exclude = '''
+/(
+  \.git  # Git version control directory
+  | \.tox  # tox environment directories
+  | \.venv  # Virtual environment directories
+  | build  # Build output directory
+  | dist  # Distribution output directory
+  | migrations  # Database migrations in Django/Flask projects
+  | __pycache__  # Python bytecode cache directories
+  | .*\.egg-info  # Egg information directories
+  | .*\.whl  # Wheel package files
+  | .*/tests/resources  # Test resource files, typically not code
+)/
+'''
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = [".git"]
+asyncio_mode = "auto"
+
+# ==== Coverage.py configuration (ran using pytest-cov) ====
+# See: https://coverage.readthedocs.io/en/latest/config.html
+[tool.coverage.run]
+branch = true
+concurrency = ["multiprocessing", "thread"]
+source = ["skyrim"]
+
+[tool.coverage.xml]
+output = "e2mip.coverage.xml"
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover"]
+omit = ["tests/*"]
+show_missing = true
+fail_under = 20

@@ -19,7 +19,7 @@ CHANNELS = ['Z50', 'Z100', 'Z150', 'Z200', 'Z250', 'Z300', 'Z400', 'Z500', 'Z600
 
 class FuxiModel(GlobalModel):
     model_name = "fuxi"
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(self.model_name, *args, **kwargs)
 
@@ -50,4 +50,3 @@ class FuxiPrediction(GlobalPrediction):
     def __init__(self, source):
         super().__init__(source)
         self.model_name = "fuxi"
-

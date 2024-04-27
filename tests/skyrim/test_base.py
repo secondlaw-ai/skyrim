@@ -1,0 +1,25 @@
+from skyrim.models.base import GlobalModel
+from dataclasses import dataclass
+from earth2mip import schema
+from skyrim.libs.ic import IfsDatasource
+
+# TODO: build a timeloop
+@dataclass
+class BoringModel:
+    in_channel_names: list
+    out_channel_names: list
+    time_step: int = 6
+     
+class BoringGlobalModel(GlobalModel):
+    model_name = "boring"
+    def __init__(self, *args, **kwargs):
+        super().__init__(self.model_name, *args, **kwargs)
+    
+    def build_model(self):
+        return BoringModel(in_channel_names=['u10'], out_channel_names=['u10'])
+
+
+def test_get_initial_conditions():
+    # wip, test channels.
+    model = BoringGlobalModel(ic_provider=schema.InitialConditionSource.ifs)
+    assert isinstance(model.data_source, IfsDatasource)

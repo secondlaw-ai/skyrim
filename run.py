@@ -56,7 +56,6 @@ if __name__ == "__main__":
         help="Initial conditions provider.",
     )
 
-
     args = parser.parse_args()
 
     if args.list_models:
@@ -66,7 +65,9 @@ if __name__ == "__main__":
 
     # initialize the model
     ensure_cds_loaded()
-    model = Skyrim(args.model_name, ic_provider=InitialConditionSource(args.initial_conditions))
+    model = Skyrim(
+        args.model_name, ic_provider=InitialConditionSource(args.initial_conditions)
+    )
     # NOTE: the input state is fetched from cds by default
     pred = model.predict(
         date=args.date,

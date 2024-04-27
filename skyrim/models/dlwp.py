@@ -11,7 +11,7 @@ from .utils import run_basic_inference
 
 class DLWPModel(GlobalModel):
     model_name = "dlwp"
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(self.model_name, *args, **kwargs)
 
@@ -48,4 +48,3 @@ class DLWPPrediction(GlobalPrediction):
     def __init__(self, source):
         super().__init__(source)
         self.model_name = "dlwp"
-    

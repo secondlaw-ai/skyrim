@@ -6,6 +6,7 @@ from earth2mip import registry, schema
 from .base import GlobalModel, GlobalPrediction
 from .utils import run_basic_inference
 
+
 # fmt: off
     # https://github.com/NVIDIA/earth2mip/blob/86b11fe4ba2f19641802112e8b0ba6b962123130/earth2mip/networks/fcnv2_sm.py#L37-L111
 CHANNELS = [ "u10m", "v10m", "u100m", "v100m", "t2m", "sp", "msl", "tcwv", "u50", "u100",
@@ -20,7 +21,7 @@ CHANNELS = [ "u10m", "v10m", "u100m", "v100m", "t2m", "sp", "msl", "tcwv", "u50"
 # fmt: on
 class FourcastnetV2Model(GlobalModel):
     model_name = "fourcastnet_v2"
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(self.model_name, *args, **kwargs)
 
@@ -57,4 +58,3 @@ class FourcastnetV2Prediction(GlobalPrediction):
     def __init__(self, source):
         super().__init__(source)
         self.model_name = "fourcastnet_v2"
-        

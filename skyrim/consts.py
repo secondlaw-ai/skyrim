@@ -1,5 +1,5 @@
 from typing import Literal
-from enum import Enum
+
 # sl: surface and single-level parameters
 # pl: pressure level parameters
 
@@ -25,6 +25,7 @@ CDS_PRESSURE_API_MAP = {
 
 CDS_LEVELS = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50]
 CDS_API_MAP = CDS_SINGLE_API_MAP | CDS_PRESSURE_API_MAP
+
 
 def get_cds_api_map(level_type: Literal["single", "pressure"]):
     return CDS_SINGLE_API_MAP if level_type == "single" else CDS_PRESSURE_API_MAP

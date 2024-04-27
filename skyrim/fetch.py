@@ -98,7 +98,6 @@ def fetch_cds_level_data(
     return output_path
 
 
-
 def merge_files(output_file_path: str, input_file_paths: list[str]):
     """
     Merges multiple files into a single file using the `cat` command via subprocess.
