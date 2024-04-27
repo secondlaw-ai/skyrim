@@ -175,5 +175,8 @@ pyrightconfig.json
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 
+#cloud
+.creds
+
 # sys
 .DS_Store
