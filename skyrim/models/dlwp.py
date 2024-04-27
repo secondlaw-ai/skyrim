@@ -11,15 +11,12 @@ from .utils import run_basic_inference
 
 class DLWPModel(GlobalModel):
     model_name = "dlwp"
-    
-    def __init__(self):
-        super().__init__(self.model_name)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(self.model_name, *args, **kwargs)
 
     def build_model(self):
         return dlwp.load(registry.get_model("e2mip://fcn"))
-
-    def build_datasource(self):
-        return cds.DataSource(self.model.in_channel_names)
 
     @property
     def time_step(self):
@@ -51,4 +48,3 @@ class DLWPPrediction(GlobalPrediction):
     def __init__(self, source):
         super().__init__(source)
         self.model_name = "dlwp"
-    

@@ -26,16 +26,13 @@ CHANNELS = ["z50", "z100", "z150", "z200", "z250", "z300", "z400", "z500", "z600
 class GraphcastModel(GlobalModel):
     # TODO: implement rollout
 
-    def __init__(self, model_name: str = "graphcast"):
-        super().__init__(model_name)
+    def __init__(self, model_name: str = "graphcast", **kwargs):
+        super().__init__(model_name, **kwargs)
 
     def build_model(self):
         return graphcast.load_time_loop_operational(
             registry.get_model("e2mip://graphcast")
         )
-
-    def build_datasource(self):
-        return cds.DataSource(self.model.in_channel_names)
 
     @property
     def time_step(self):

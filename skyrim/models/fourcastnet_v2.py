@@ -1,12 +1,11 @@
 import datetime
-from pathlib import Path
 import xarray as xr
-
-from earth2mip import registry
-from earth2mip.initial_conditions import cds
 import earth2mip.networks.fcnv2_sm as fcnv2_sm
+from pathlib import Path
+from earth2mip import registry, schema
 from .base import GlobalModel, GlobalPrediction
 from .utils import run_basic_inference
+
 
 # fmt: off
     # https://github.com/NVIDIA/earth2mip/blob/86b11fe4ba2f19641802112e8b0ba6b962123130/earth2mip/networks/fcnv2_sm.py#L37-L111
@@ -22,15 +21,12 @@ CHANNELS = [ "u10m", "v10m", "u100m", "v100m", "t2m", "sp", "msl", "tcwv", "u50"
 # fmt: on
 class FourcastnetV2Model(GlobalModel):
     model_name = "fourcastnet_v2"
-    
-    def __init__(self):
-        super().__init__(self.model_name)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(self.model_name, *args, **kwargs)
 
     def build_model(self):
         return fcnv2_sm.load(registry.get_model("e2mip://fcnv2_sm"))
-
-    def build_datasource(self):
-        return cds.DataSource(self.model.in_channel_names)
 
     @property
     def time_step(self):
@@ -62,4 +58,3 @@ class FourcastnetV2Prediction(GlobalPrediction):
     def __init__(self, source):
         super().__init__(source)
         self.model_name = "fourcastnet_v2"
-        

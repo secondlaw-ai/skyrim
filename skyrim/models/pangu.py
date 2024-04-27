@@ -19,6 +19,7 @@ CHANNELS = ["z1000", "z925", "z850", "z700", "z600","z500", "z400", "z300", "z25
     ]
 # fmt: on
 
+
 class PanguModel(GlobalModel):
     """
     This class implements the Pangu model for environmental predictions using the Earth-2 MIP framework.
@@ -34,17 +35,14 @@ class PanguModel(GlobalModel):
     Parameters:
     - model_name (str): Name of the model, default is 'pangu'.
     """
-    
+
     model_name = "pangu"
 
-    def __init__(self):
-        super().__init__(self.model_name)
+    def __init__(self, *args, **kwargs):
+        super().__init__(self.model_name, *args, **kwargs)
 
     def build_model(self):
         return pangu.load(registry.get_model("e2mip://pangu"))
-
-    def build_datasource(self):
-        return cds.DataSource(self.model.in_channel_names)
 
     @property
     def time_step(self):
@@ -76,5 +74,3 @@ class PanguPrediction(GlobalPrediction):
     def __init__(self, source):
         super().__init__(source)
         self.model_name = "pangu"
-
-
