@@ -1,10 +1,8 @@
 import datetime
-from pathlib import Path
 import xarray as xr
-
-from earth2mip import registry, schema
-from earth2mip.initial_conditions import cds, get_data_source
 import earth2mip.networks.fcnv2_sm as fcnv2_sm
+from pathlib import Path
+from earth2mip import registry, schema
 from .base import GlobalModel, GlobalPrediction
 from .utils import run_basic_inference
 

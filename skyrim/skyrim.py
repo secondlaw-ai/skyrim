@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from loguru import logger
 from .models import MODEL_FACTORY
 from .models.ensemble import GlobalEnsemblePrediction, GlobalEnsemble
-from .consts import IcProvider
 from earth2mip.schema import InitialConditionSource
 load_dotenv()
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"

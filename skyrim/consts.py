@@ -26,7 +26,5 @@ CDS_PRESSURE_API_MAP = {
 CDS_LEVELS = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50]
 CDS_API_MAP = CDS_SINGLE_API_MAP | CDS_PRESSURE_API_MAP
 
-IcProvider = Enum(value='IcProvider', names=[("CDS", "cds"), ("IFS","ifs"), ("GFS","gfs"), ("HRMIP","hrmip"), ("HDF5","hdf5")])
-
 def get_cds_api_map(level_type: Literal["single", "pressure"]):
     return CDS_SINGLE_API_MAP if level_type == "single" else CDS_PRESSURE_API_MAP
