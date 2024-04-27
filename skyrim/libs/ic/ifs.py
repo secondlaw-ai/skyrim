@@ -16,8 +16,10 @@ from earth2mip.initial_conditions import base
 
 LOCAL_CACHE = os.getenv("LOCAL_CACHE") or (os.environ["HOME"] + "/.cache/modulus")
 
-def _get_filename(time: datetime.datetime, lead_time: str):
-    date_format = f"%Y%m%d/%Hz/0p4-beta/oper/%Y%m%d%H%M%S-{lead_time}-oper-fc.grib2"
+def _get_filename(time: datetime.datetime, lead_time: str, resolution: str = '0p25'):
+    if resolution not in {'0p4-beta', '0p25'}:
+        raise Exception('Unknown resolution for IFS')
+    date_format = f"%Y%m%d/%Hz/ifs/{resolution}/oper/%Y%m%d%H%M%S-{lead_time}-oper-fc.grib2"
     return time.strftime(date_format)
 
 
@@ -73,7 +75,6 @@ def get_cache_file_path(path, local_cache_path: str = LOCAL_CACHE):
 def get(time: datetime.datetime, channels: List[str]):
     root = 's3://ecmwf-forecasts/'
     path = root + _get_filename(time, "0h")
-    path = path.replace('00z/', '00z/ifs/')
     local_path = download_cached(path)
     dataset_0h = xarray.open_dataset(local_path, engine="cfgrib")
     # get t2m and other things from 12 hour forecast initialized 12 hours before
@@ -81,27 +82,26 @@ def get(time: datetime.datetime, channels: List[str]):
     path = root + _get_filename(time - datetime.timedelta(hours=12), "12h")
     local_path = download_cached(path)
     forecast_12h = xarray.open_dataset(local_path, engine="cfgrib")
-
+    # TODO: some of these channels seem to be omitted. Revisit.
     channel_data = [
         _get_channel(
             c,
-            u10m=dataset_0h.u10,
-            v10m=dataset_0h.v10,
-            u100m=dataset_0h.u10,
-            v100m=dataset_0h.v10,
-            sp=dataset_0h.sp,
-            t2m=forecast_12h.t2m,
-            msl=forecast_12h.msl,
-            tcwv=forecast_12h.tciwv,
-            t=dataset_0h.t,
+            z=dataset_0h.gh * 9.81,
             u=dataset_0h.u,
             v=dataset_0h.v,
-            r=dataset_0h.r,
-            z=dataset_0h.gh * 9.81,
+            u10m=dataset_0h.sel(isobaricInhPa=1000.0).u,
+            v10m=dataset_0h.sel(isobaricInhPa=1000.0).v,
+            u100m=dataset_0h.sel(isobaricInhPa=1000.0).u,
+            v100m=dataset_0h.sel(isobaricInhPa=1000.0).v,
+            sp=dataset_0h.sp,
+            t2m=forecast_12h.sel(isobaricInhPa=1000.0).t, # t2m is not found in forecast..
+            msl=forecast_12h.msl,
+            tcwv=forecast_12h.tcwv,
+            t=dataset_0h.t,
+            r=dataset_0h.r
         )
         for c in channels
     ]
-
     array = np.stack([d for d in channel_data], axis=0)
     darray = xarray.DataArray(
         array,
@@ -109,7 +109,6 @@ def get(time: datetime.datetime, channels: List[str]):
         coords={
             "channel": channels,
             "lon": dataset_0h.longitude.values,
-            "lat": dataset_0h.latitude.values,
             "time": time,
         },
     )
@@ -130,15 +129,4 @@ class DataSource(base.DataSource):
         return earth2mip.grid.equiangular_lat_lon_grid(721, 1440)
 
     def __getitem__(self, time: datetime.datetime) -> np.ndarray:
-        ds = get(time, self.channel_names)
-        ds = ds.expand_dims("time", axis=0)
-        # move to earth2mip.channels
-
-        # TODO refactor interpolation to another place
-        metadata = json.loads(METADATA.read_text())
-        lat = np.array(metadata["coords"]["lat"])
-        lon = np.array(metadata["coords"]["lon"])
-        ds = ds.roll(lon=len(ds.lon) // 2, roll_coords=True)
-        ds["lon"] = ds.lon.where(ds.lon >= 0, ds.lon + 360)
-        assert min(ds.lon) >= 0, min(ds.lon)  # noqa
-        return ds.interp(lat=lat, lon=lon, kwargs={"fill_value": "extrapolate"})
+        return get(time, self.channel_names)
