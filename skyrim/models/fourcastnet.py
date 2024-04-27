@@ -20,8 +20,8 @@ CHANNELS = ["u10m", "v10m", "t2m", "sp", "msl", "t850", "u1000", "v1000", "z1000
 class FourcastnetModel(GlobalModel):
     model_name = "fourcastnet"
     
-    def __init__(self):
-        super().__init__(self.model_name)
+    def __init__(self, *args, **kwargs):
+        super().__init__(self.model_name, *args, **kwargs)
 
     def build_model(self):
         return fcn.load(registry.get_model("e2mip://fcn"))

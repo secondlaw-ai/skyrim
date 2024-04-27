@@ -21,7 +21,7 @@ def wrap_prediction(model_name, source):
         raise ValueError("Invalid model name. Must be a string or a list of strings.")
     
 class Skyrim:
-    def __init__(self, *models: str, ic_provider: InitialConditionSource = InitialConditionSource.cds):
+    def __init__(self, *models: str, ic_provider: InitialConditionSource | str = InitialConditionSource.cds):
         for model in models:
             if not model in MODEL_FACTORY:
                 raise ValueError(f"Model {model} is not supported.")
@@ -33,7 +33,7 @@ class Skyrim:
 
         logger.debug(f"Initializing {model} model with IC from {ic_provider}")
         self.model_name = model
-        self.model = MODEL_FACTORY[model][0](ic_provider=ic_provider)
+        self.model = MODEL_FACTORY[model][0](ic_provider=InitialConditionSource(ic_provider))
 
     def __repr__(self) -> str:
         return f"Skyrim({self.model_name})"

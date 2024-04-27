@@ -37,8 +37,8 @@ class PanguModel(GlobalModel):
     
     model_name = "pangu"
 
-    def __init__(self):
-        super().__init__(self.model_name)
+    def __init__(self, *args, **kwargs):
+        super().__init__(self.model_name,*args, **kwargs)
 
     def build_model(self):
         return pangu.load(registry.get_model("e2mip://pangu"))

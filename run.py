@@ -24,7 +24,7 @@ if __name__ == "__main__":
         "--date",
         "-s",
         type=str,
-        default="20240426",
+        default="20240420",
         help="YYYYMMDD",
     )
     parser.add_argument(
