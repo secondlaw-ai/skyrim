@@ -3,7 +3,7 @@
  <a href="https://www.secondlaw.xyz">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/skyrim_banner_1.png"/>
-    <img height=240 src="./assets/skyrim_banner_1.png"/>
+    <img height=320 src="./assets/skyrim_banner_1.png"/>
   </picture>
  </a>
  <br></br>
