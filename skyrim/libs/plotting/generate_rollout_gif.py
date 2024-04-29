@@ -92,15 +92,6 @@ def generate_rollout_gif(
     print(f"GIF saved to {gif_path}")
 
 
-import xarray as xr
-import cartopy.crs as ccrs
-import matplotlib.pyplot as plt
-import cartopy.feature as cfeature
-import imageio
-from tqdm import tqdm
-import os
-
-
 def visualize_rollout(
     output_paths, channels, cmap="coolwarm", projection="Orthographic"
 ):
