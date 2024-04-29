@@ -36,7 +36,7 @@ Currently, best is to set up your environment using Docker.
 
 1. Find a machine you like RTX3090 or above with at least 24GB memory. Make sure you have good bandwith (+500MB/s).
 2. Select the instance template from [here](https://cloud.vast.ai/?ref_id=128656&template_id=1883215a8487ec6ea9ad68a7cdb38c5e).
-3. Then clone the repo and `pip install .`
+3. Then clone the repo and `pip install -r requirements.txt`
 
 ## Your first forecast
 
