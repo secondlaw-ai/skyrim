@@ -24,10 +24,11 @@ CHANNELS = ["z50", "z100", "z150", "z200", "z250", "z300", "z400", "z500", "z600
 
 
 class GraphcastModel(GlobalModel):
-    # TODO: implement rollout
+    # TODO: check rollout implementation
+    model_name = "graphcast"
 
-    def __init__(self, model_name: str = "graphcast", **kwargs):
-        super().__init__(model_name, **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(self.model_name, *args, **kwargs)
 
     def build_model(self):
         return graphcast.load_time_loop_operational(
@@ -51,7 +52,8 @@ class GraphcastModel(GlobalModel):
         start_time: datetime.datetime,
         initial_condition: str | Path | None = None,
     ) -> xr.DataArray | xr.Dataset:
-
+        # TODO: initial condition
+        
         # NOTE: this only works for graphcast operational model
         # some info about stepper:
         # https://github.com/NVIDIA/earth2mip/blob/86b11fe4ba2f19641802112e8b0ba6b962123130/earth2mip/time_loop.py#L114-L122
@@ -79,7 +81,7 @@ class GraphcastModel(GlobalModel):
         self, start_time: datetime.datetime, n_steps: int = 3, save: bool = True
     ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
         # TODO:
-        pred, output_paths, source = None, [], "cds"
+        pred, output_paths, source = None, [], self.ic_source
         for n in range(n_steps):
             # returns a state tuple
             pred = self.predict_one_step(start_time, initial_condition=pred)

@@ -2,47 +2,42 @@ import datetime
 import os
 from dotenv import load_dotenv
 from loguru import logger
+from typing import Literal
 from .models import MODEL_FACTORY
 from .models.ensemble import GlobalEnsemblePrediction, GlobalEnsemble
-from earth2mip.schema import InitialConditionSource
 
 load_dotenv()
 os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"
 
 
-def wrap_prediction(model_name, source):
-    if isinstance(model_name, str):
-        if model_name in MODEL_FACTORY:
-            return MODEL_FACTORY[model_name][1](source)
-        else:
-            raise ValueError(f"Model name {model_name} is not supported.")
-    elif isinstance(model_name, list):
+def wrap_prediction(model_names, source):
+    if len(model_names) > 1:
         return GlobalEnsemblePrediction(source)
-    else:
-        raise ValueError("Invalid model name. Must be a string or a list of strings.")
+    return MODEL_FACTORY[model_names[0]][1](source)
 
 
 class Skyrim:
     def __init__(
         self,
-        *models: str,
-        ic_provider: InitialConditionSource | str = InitialConditionSource.cds,
+        *model_names: str,
+        ic_source: Literal["cds", "gfs", "ifs"] = "cds",
     ):
-        for model in models:
-            if not model in MODEL_FACTORY:
-                raise ValueError(f"Model {model} is not supported.")
+        # TODO: device of the model should be configurable
 
-        if len(models) > 1:
-            logger.info(f"Initializing ensemble model with {models}")
-            self.model_name = models
-            self.model = GlobalEnsemble(models)
+        missing_names = [name for name in model_names if name not in MODEL_FACTORY]
+        if missing_names:
+            raise ValueError(f"Invalid model name(s): {missing_names}")
 
+        self.model_names = model_names
+
+        if len(model_names) > 1:
+            logger.info(f"Initializing ensemble model with {model_names}")
+            self.model = GlobalEnsemble(model_names)
+
+        else:
+            self.model = MODEL_FACTORY[model_names[0]][0](ic_source=ic_source)
         logger.debug(
-            f"Initializing {model} model with IC from {InitialConditionSource(ic_provider).value.capitalize()}"
-        )
-        self.model_name = model
-        self.model = MODEL_FACTORY[model][0](
-            ic_provider=InitialConditionSource(ic_provider)
+            f"Initialized {self.model} model with initial conditions from {ic_source}"
         )
 
     def __repr__(self) -> str:
@@ -61,6 +56,7 @@ class Skyrim:
     ):
         # TODO: output dir should be configurable, currently hardcoded to outputs/{model_name}/*
         # TODO: add checks for date and time format
+
         # Create datetime object using date and time arguments as start_time
         year = int(date[:4])
         month = int(date[4:6])
@@ -82,4 +78,4 @@ class Skyrim:
         )
         # You might want to do something with pred or output_paths here
         logger.debug("Prediction completed successfully")
-        return wrap_prediction(self.model_name, pred), output_paths
+        return wrap_prediction(self.model_names, pred), output_paths

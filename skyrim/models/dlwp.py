@@ -16,7 +16,7 @@ class DLWPModel(GlobalModel):
         super().__init__(self.model_name, *args, **kwargs)
 
     def build_model(self):
-        return dlwp.load(registry.get_model("e2mip://fcn"))
+        return dlwp.load(registry.get_model("e2mip://dlwp"))
 
     @property
     def time_step(self):

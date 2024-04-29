@@ -2,7 +2,6 @@ import argparse
 from skyrim import Skyrim
 from skyrim.utils import ensure_cds_loaded
 from dotenv import load_dotenv
-from earth2mip.schema import InitialConditionSource
 
 load_dotenv()
 
@@ -66,7 +65,7 @@ if __name__ == "__main__":
     # initialize the model
     ensure_cds_loaded()
     model = Skyrim(
-        args.model_name, ic_provider=InitialConditionSource(args.initial_conditions)
+        args.model_name, ic_source=args.initial_conditions
     )
     # NOTE: the input state is fetched from cds by default
     pred = model.predict(
