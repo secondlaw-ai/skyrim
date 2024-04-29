@@ -98,7 +98,7 @@ class GlobalEnsemble:
         return averaged_prediction, ens_output_paths
 
     def _save_ensembled_outputs(self, output_paths, n_steps):
-        ens_prefix = "_".join(self.model_names)
+        ens_prefix = "_".join(sorted(self.model_names))
         ens_directory = OUTPUT_DIR / ens_prefix
         ens_directory.mkdir(exist_ok=True)  # Ensure directory exists
         ens_output_paths = []

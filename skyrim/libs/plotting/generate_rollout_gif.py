@@ -4,8 +4,9 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import imageio
 import os
-from tqdm import tqdm
+from tqdm.auto import tqdm
 from typing import Literal
+from IPython.display import HTML
 
 ProjectionType = Literal["Orthographic", "PlateCarree", "Mollweide", "Robinson"]
 
@@ -85,7 +86,62 @@ def generate_rollout_gif(
 
     # Create the GIF
     imageio.mimsave(
-        gif_path, images, duration=1
+        gif_path, images, duration=1, loop=0
     )  # duration controls the display time for each frame
 
     print(f"GIF saved to {gif_path}")
+
+
+def visualize_rollout(
+    output_paths, channels, cmap="coolwarm", projection="Orthographic"
+):
+    """
+    Generates and displays GIFs for specified variables from NetCDF files.
+
+    Parameters:
+    - output_paths: List of paths to the output NetCDF files.
+    - channels: List of variable names to plot and generate GIFs.
+    - cmap: Colormap to use for the plots.
+    - projection: The Cartopy projection to use for plotting.
+    """
+    gif_paths = []
+    for variable_name in channels:
+        gif_path = f"{variable_name}_animation.gif"
+        generate_rollout_gif(
+            output_paths=output_paths,
+            variable_name=variable_name,
+            gif_path=gif_path,
+            cmap=cmap,
+            projection=projection,
+        )
+        gif_paths.append(gif_path)
+
+    return display_gifs_side_by_side(gif_paths)
+
+
+def display_gifs_side_by_side(gif_paths):
+    """Display given GIFs side by side in a Jupyter Notebook."""
+    if not gif_paths:
+        return HTML("<p>No GIFs provided.</p>")
+
+    num_gifs = len(gif_paths)
+    width_percent = 100 / num_gifs
+
+    img_tags = " ".join(
+        f'<img src="{path}" style="width: {width_percent}%; margin-right: 2px;">'
+        for path in gif_paths[:-1]
+    )
+    img_tags += f'<img src="{gif_paths[-1]}" style="width: {width_percent}%;">'  # Last image without right margin
+
+    html_str = f"""
+    <div style="display:flex; justify-content:space-between;">
+        {img_tags}
+    </div>
+    """
+    return HTML(html_str)
+
+
+# Example usage:
+# output_paths = ['path_to_netCDF1.nc', 'path_to_netCDF2.nc']
+# channels = ['t2m', 'u10m', 'v10m']
+# visualize_rollout(output_paths, channels)

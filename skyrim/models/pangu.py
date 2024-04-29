@@ -45,6 +45,10 @@ class PanguModel(GlobalModel):
         return pangu.load(registry.get_model("e2mip://pangu"))
 
     @property
+    def device(self):
+        return self.model.device
+
+    @property
     def time_step(self):
         return self.model.time_step
 

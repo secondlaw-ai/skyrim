@@ -4,6 +4,7 @@ import xarray as xr
 from typing import Literal
 from pathlib import Path
 from loguru import logger
+import torch
 from earth2mip import schema
 from ..libs.ic import get_data_source
 
@@ -16,15 +17,18 @@ if not OUTPUT_DIR.exists():
 
 class GlobalModel:
     def __init__(
-        self,
-        model_name: str,
-        ic_provider: schema.InitialConditionSource = schema.InitialConditionSource.cds,
+        self, model_name: str, ic_source: Literal["cds", "gfs", "ifs"] = "cds"
     ):
         clock = time.time()
         self.model_name = model_name
+        self.ic_source = ic_source
+
+        logger.debug(f"Building {model_name} model...")
         self.model = self.build_model()
-        self.data_source = self.build_datasource(ic_provider)
-        self.ic_source = ic_provider.value
+
+        logger.debug(f"Building {self.ic_source} data source...")
+        self.data_source = self.build_datasource()
+
         logger.success(f"Initialized {model_name} in {time.time() - clock:.1f} seconds")
 
     def build_model(self):
@@ -33,13 +37,21 @@ class GlobalModel:
         """
         raise NotImplementedError
 
-    def build_datasource(self, ic_provider: schema.InitialConditionSource):
+    def build_datasource(self):
         """
         Build or load the data source configuration and components.
         """
         return get_data_source(
-            self.model.in_channel_names, initial_condition_source=ic_provider
+            self.model.in_channel_names,
+            initial_condition_source=schema.InitialConditionSource(self.ic_source),
         )
+
+    def release_model(self):
+        """
+        Release the model resources.
+        """
+        # TODO: add functionality to release model resources
+        raise NotImplementedError
 
     @property
     def time_step(self):
@@ -136,7 +148,7 @@ class GlobalPrediction:
         return self.prediction.size
 
     @property
-    def channel(self):
+    def channels(self):
         return self.prediction.channel
 
     def __repr__(self) -> str:
@@ -165,17 +177,19 @@ class GlobalPrediction:
             data = self.prediction
         else:
             assert channel in self.channels, f"Variable {channel} not found in dataset."
-            data = self.prediction[channel]
+            data = self.prediction.sel(channel=channel)
 
         # slice lat if specified
         if lat:
             data = data.sel(lat=lat)
 
+        # slice lon if specified
         if lon:
             data = data.sel(lon=lon)
 
         if n_step and "time" in data.dims:
             data = data.isel(time=n_step)
+        return data
 
     @property
     def model_channel_parser(self, channel: str):
@@ -194,7 +208,7 @@ class GlobalPrediction:
         # Convert negative longitude to positive in a 0-360 system
         if lon < 0:
             lon = 360 + lon
-        assert channel in self.channel, f"Variable {channel} not found in dataset."
+        assert channel in self.channels, f"Variable {channel} not found in dataset."
 
         if (
             lat not in self.prediction.coords["lat"].values
@@ -239,6 +253,9 @@ class GlobalPredictionRollout:
     def __init__(self, rollout: list[str | Path | xr.DataArray]):
         self.rollout = [GlobalPrediction(source) for source in rollout]
         self.time_steps = [r.prediction.time.values[-1] for r in self.rollout]
+
+    def __repr__(self):
+        return f"<GlobalPredictionRollout with {len(self.rollout)} predictions, last times: {self.time_steps}>"
 
     def wind_speed(
         self,
