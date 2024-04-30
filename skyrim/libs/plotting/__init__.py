@@ -1,2 +1,2 @@
-from .plot_wind_components import plot_wind_components
+from .plot_wind_speed import plot_wind_speed
 from .generate_rollout_gif import generate_rollout_gif, visualize_rollout
