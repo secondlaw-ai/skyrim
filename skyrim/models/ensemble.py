@@ -2,7 +2,8 @@ import datetime
 import torch
 from loguru import logger
 import xarray as xr
-from .base import OUTPUT_DIR, GlobalPrediction
+from pathlib import Path
+from .base import GlobalPrediction
 from . import MODEL_FACTORY
 
 
@@ -72,7 +73,11 @@ class GlobalEnsemble:
         raise NotImplementedError
 
     def rollout(
-        self, start_time: datetime.datetime, n_steps: int = 3, save: bool = True
+        self,
+        start_time: datetime.datetime,
+        n_steps: int,
+        save: bool,
+        output_dir: str | Path,
     ):
         """Perform a rollout for all models, aggregating predictions and managing resources."""
         # TODO: seperate model predictions should be deleted after final ens calculation?
@@ -83,7 +88,12 @@ class GlobalEnsemble:
         for model_name in self.model_names:
             self._load_model(model_name)
             try:
-                pred, paths = self._model.rollout(start_time, n_steps, save)
+                pred, paths = self._model.rollout(
+                    start_time=start_time,
+                    n_steps=n_steps,
+                    save=save,
+                    output_dir=output_dir,
+                )
                 output_paths.extend(paths)
                 predictions.append(pred)
             finally:
@@ -94,12 +104,14 @@ class GlobalEnsemble:
 
         if save:
             logger.debug("Caculating and saving ensemble predictions.")
-            ens_output_paths = self._save_ensembled_outputs(output_paths, n_steps)
+            ens_output_paths = self._save_ensembled_outputs(
+                output_paths, n_steps, output_dir
+            )
         return averaged_prediction, ens_output_paths
 
-    def _save_ensembled_outputs(self, output_paths, n_steps):
+    def _save_ensembled_outputs(self, output_paths, n_steps, output_dir):
         ens_prefix = "_".join(sorted(self.model_names))
-        ens_directory = OUTPUT_DIR / ens_prefix
+        ens_directory = output_dir / ens_prefix
         ens_directory.mkdir(exist_ok=True)  # Ensure directory exists
         ens_output_paths = []
         for s in range(n_steps):

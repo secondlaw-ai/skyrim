@@ -4,15 +4,8 @@ import xarray as xr
 from typing import Literal
 from pathlib import Path
 from loguru import logger
-import torch
 from earth2mip import schema
 from ..libs.ic import get_data_source
-
-OUTPUT_DIR = Path(__file__).parent.parent.parent.resolve() / Path("./outputs")
-
-if not OUTPUT_DIR.exists():
-    OUTPUT_DIR.mkdir()
-    logger.success(f"Created output directory: {OUTPUT_DIR}")
 
 
 class GlobalModel:
@@ -76,18 +69,28 @@ class GlobalModel:
         raise NotImplementedError
 
     def rollout(
-        self, start_time: datetime.datetime, n_steps: int = 3, save: bool = True
+        self,
+        start_time: datetime.datetime,
+        n_steps: int,
+        save: bool,
+        output_dir: str | Path,
     ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
         # it does not make sense to keep all the results in the memory
         # return final pred and list of paths of the saved predictions
         # TODO: add functionality to rollout from a given initial condition
-        pred, output_paths, source = None, [], self.ic_source
+        pred, output_paths, ic_source = None, [], self.ic_source
         for n in range(n_steps):
             pred = self.predict_one_step(start_time, initial_condition=pred)
             pred_time = start_time + self.time_step
             if save:
-                output_path = self.save_output(pred, start_time, pred_time, source)
-                start_time, source = pred_time, "file"
+                output_path = self.save_output(
+                    pred=pred,
+                    start_time=start_time,
+                    pred_time=pred_time,
+                    ic_source=ic_source,
+                    output_dir=output_dir,
+                )
+                start_time, ic_source = pred_time, "file"
                 output_paths.append(output_path)
             logger.success(f"Rollout step {n+1}/{n_steps} completed")
         return pred, output_paths
@@ -97,20 +100,20 @@ class GlobalModel:
         pred: xr.DataArray | xr.Dataset,
         start_time: datetime.datetime,
         pred_time: datetime.datetime,
-        source: Literal["cds", "file"] = "cds",
-        output_dir=OUTPUT_DIR,
+        ic_source: str,
+        output_dir: str | Path,
     ):
         # e.g.:
         # filename = "pangu__20180101_00:00__20180101_06:00.nc"
         # output_path = "./outputs/pangu/pangu__20180101_00:00__20180101_06:00.nc"
         filename = (
             f"{self.model_name}" + "__"
-            f"{source}__"
+            f"{ic_source}__"
             f"{start_time.strftime('%Y%m%d_%H:%M')}"
             + "__"
             + f"{pred_time.strftime('%Y%m%d_%H:%M')}.nc"
         )
-        output_path = OUTPUT_DIR / self.model_name / filename
+        output_path = output_dir/ self.model_name / filename
 
         logger.info(f"Saving outputs to {output_path}")
         if not output_path.parent.exists():

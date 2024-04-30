@@ -63,3 +63,6 @@ def plot_wind_speed(
     # Show plot if requested
     if show:
         plt.show()
+
+    # Return the axes object for further use
+    return ax

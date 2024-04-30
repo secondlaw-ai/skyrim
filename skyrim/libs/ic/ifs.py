@@ -113,6 +113,7 @@ def get(time: datetime.datetime, channels: List[str]):
         coords={
             "channel": channels,
             "lon": dataset_0h.longitude.values,
+            "lat": dataset_0h.latitude.values, #NOTE: double check this line
             "time": time,
         },
     )

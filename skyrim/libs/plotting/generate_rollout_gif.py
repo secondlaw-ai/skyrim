@@ -4,18 +4,20 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import imageio
 import os
+from pathlib import Path
 from tqdm.auto import tqdm
 from typing import Literal
 from IPython.display import HTML
+from loguru import logger
 
 ProjectionType = Literal["Orthographic", "PlateCarree", "Mollweide", "Robinson"]
 
 
 def generate_rollout_gif(
-    output_paths,
-    variable_name,
-    gif_path,
-    cmap="coolwarm",
+    output_paths: list[str | Path],
+    variable_name: str,
+    output_dir: str | Path,
+    cmap: str = "coolwarm",
     projection: ProjectionType = "Orthographic",
 ):
     """
@@ -25,7 +27,7 @@ def generate_rollout_gif(
     Parameters:
     - output_paths: List of paths to the output NetCDF files.
     - variable_name: Name of the variable to plot (e.g., 't2m').
-    - gif_path: Path where the GIF should be saved.
+    - output_dir: directory path where the GIF should be saved.
     - cmap: Colormap to use for the plots.
     - projection (ProjectionType): The Cartopy projection to use for plotting.
 
@@ -36,6 +38,23 @@ def generate_rollout_gif(
                                projection='Orthographic')
 
     """
+
+    # Extract the model name, start time, and end time from file names
+    model_name = os.path.basename(output_paths[0]).split("__")[0]
+    start_time = os.path.basename(output_paths[0]).split("__")[2]
+    end_time = os.path.basename(output_paths[-1]).split("__")[3].replace(".nc", "")
+
+    # create gif_path including model name and simulation time span
+    gif_path = Path(output_dir) / (
+        f"{model_name}_{start_time}_to_{end_time}_{variable_name}.gif"
+    )
+    logger.debug(f"GIF path is set to: {gif_path}")
+
+    # Check if the gif already exists
+    if gif_path.exists():
+        logger.info(f"GIF already exists: {gif_path}")
+        return gif_path
+
     images = []
     for file_path in tqdm(output_paths, desc="Generating GIF Frames"):
         # Load the dataset
@@ -90,10 +109,15 @@ def generate_rollout_gif(
     )  # duration controls the display time for each frame
 
     print(f"GIF saved to {gif_path}")
+    return gif_path
 
 
 def visualize_rollout(
-    output_paths, channels, cmap="coolwarm", projection="Orthographic"
+    output_paths: list[str | Path],
+    channels: str,
+    output_dir: str | Path,
+    cmap="coolwarm",
+    projection="Orthographic",
 ):
     """
     Generates and displays GIFs for specified variables from NetCDF files.
@@ -106,16 +130,15 @@ def visualize_rollout(
     """
     gif_paths = []
     for variable_name in channels:
-        gif_path = f"{variable_name}_animation.gif"
-        generate_rollout_gif(
+        gif_path = generate_rollout_gif(
             output_paths=output_paths,
             variable_name=variable_name,
-            gif_path=gif_path,
+            output_dir=output_dir,
             cmap=cmap,
             projection=projection,
         )
         gif_paths.append(gif_path)
-
+    logger.debug(f"Generated GIFs: {gif_paths}")
     return display_gifs_side_by_side(gif_paths)
 
 

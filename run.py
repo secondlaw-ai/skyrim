@@ -13,17 +13,18 @@ load_dotenv()
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--model_name",
+        "--model_names",
         "-m",
         type=str,
+        nargs="+",
         choices=["pangu", "fourcastnet", "fourcastnet_v2", "graphcast", "dlwp"],
-        default="pangu",
+        default=["pangu"],  # Default is now a list with one item
     )
     parser.add_argument(
         "--date",
         "-s",
         type=str,
-        default="20240420",
+        default="20240421",
         help="YYYYMMDD",
     )
     parser.add_argument(
@@ -61,12 +62,9 @@ if __name__ == "__main__":
         available_models = Skyrim.list_available_models()
         print("Available models:", available_models)
         exit()
-
     # initialize the model
     ensure_cds_loaded()
-    model = Skyrim(
-        args.model_name, ic_source=args.initial_conditions
-    )
+    model = Skyrim(*args.model_names, ic_source=args.initial_conditions)
     # NOTE: the input state is fetched from cds by default
     pred = model.predict(
         date=args.date,
