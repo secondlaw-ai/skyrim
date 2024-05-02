@@ -5,7 +5,11 @@ description = "AI weather models united."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-maintainers = [{ name = "SecondLaw Research", email = "efe@2lw.ai" }]
+maintainers = [
+  { name = "SecondLaw Research", email = "efe@2lw.ai" },
+  { name = "SecondLaw Research", email = "murat@2lw.ai" },
+]
+dependencies = ["modal", "xarray[zarr]"]
 
 [build-system]
 requires = ["setuptools", "setuptools-scm"]
