@@ -44,6 +44,7 @@ def run_inference(
     lead_time: int,
     date: str,
     out: str = "/skyrim/outputs",
+    vars: str = "",
 ):
     from skyrim.core import Skyrim
 
@@ -53,7 +54,10 @@ def run_inference(
         time="0000",
         lead_time=lead_time,
         save=True,
-        save_config={"output_dir": out},
+        save_config={
+            "output_dir": out,
+            "filter_vars": vars.split(",") if bool(vars) else [],  # TODO: sanitize vars
+        },
     )
     vol.commit()
     print("Saved forecasts!")
@@ -66,6 +70,9 @@ analysis_image = (
         {
             "CDSAPI_KEY": CDSAPI_KEY,
             "CDSAPI_URL": CDSAPI_URL,
+            "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID", ""),
+            "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY", ""),
+            "AWS_DEFAULT_REGION": "eu-west-1",
         }
     )
 )

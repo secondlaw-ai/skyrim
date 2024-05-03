@@ -54,10 +54,7 @@ if not Path(OUTPUT_DIR).exists():
     Path(OUTPUT_DIR).mkdir()
     logger.success(f"Created output directory: {OUTPUT_DIR}")
 
-DEFAULT_SAVE_CONFIG = {
-    "output_dir": OUTPUT_DIR,
-    "file_type": "netcdf",
-}
+DEFAULT_SAVE_CONFIG = {"output_dir": OUTPUT_DIR, "file_type": "netcdf", "data_vars": []}
 
 
 def remote_forecast_exists(path: str):
@@ -85,6 +82,8 @@ def save_forecast(
     target = "s3" if p.scheme == "s3" else "local"
     if target == "s3" and (not requested_file_type):
         config["file_type"] = "zarr"
+
+    pred = pred[config["filter_vars"]] if len(config["filter_vars"]) else pred
 
     if target == "local":
         if config["file_type"] == "netcdf":
