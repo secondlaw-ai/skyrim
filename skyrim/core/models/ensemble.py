@@ -75,9 +75,9 @@ class GlobalEnsemble:
     def rollout(
         self,
         start_time: datetime.datetime,
-        n_steps: int,
-        save: bool,
-        output_dir: str | Path,
+        n_steps: int = 3,
+        save: bool = True,
+        save_config: dict = {},
     ):
         """Perform a rollout for all models, aggregating predictions and managing resources."""
         # TODO: seperate model predictions should be deleted after final ens calculation?

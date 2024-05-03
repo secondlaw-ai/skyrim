@@ -9,7 +9,15 @@ maintainers = [
   { name = "SecondLaw Research", email = "efe@2lw.ai" },
   { name = "SecondLaw Research", email = "murat@2lw.ai" },
 ]
-dependencies = ["modal", "xarray[zarr]"]
+dependencies = [
+  "modal",
+  "xarray[zarr]",
+  "base58",
+  'boto3',
+  's3fs',
+  'zarr',
+  'scipy',
+]
 
 [build-system]
 requires = ["setuptools", "setuptools-scm"]

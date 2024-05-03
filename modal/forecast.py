@@ -22,6 +22,9 @@ image = (
         {
             "CDSAPI_KEY": CDSAPI_KEY,
             "CDSAPI_URL": CDSAPI_URL,
+            "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID", ""),
+            "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY", ""),
+            "AWS_DEFAULT_REGION": "eu-west-1",
         }
     )
 )
@@ -36,7 +39,12 @@ vol = Volume.from_name("forecasts", create_if_missing=True)
     image=image,
     volumes={"/skyrim/outputs": vol},
 )
-def run_inference(model_name: str, lead_time: int, date: str):
+def run_inference(
+    model_name: str,
+    lead_time: int,
+    date: str,
+    out: str = "/skyrim/outputs",
+):
     from skyrim.core import Skyrim
 
     model = Skyrim(model_name)
@@ -45,6 +53,7 @@ def run_inference(model_name: str, lead_time: int, date: str):
         time="0000",
         lead_time=lead_time,
         save=True,
+        save_config={"output_dir": out},
     )
     vol.commit()
     print("Saved forecasts!")
