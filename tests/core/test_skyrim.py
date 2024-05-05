@@ -8,5 +8,4 @@ def test_forecasts():
     runner = CliRunner()
     res = runner.invoke(main)
     assert res.exit_code == 0
-    breakpoint()
     
