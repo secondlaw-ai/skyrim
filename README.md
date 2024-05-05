@@ -91,11 +91,15 @@ If you are using CDS initial conditions, then you will need a [CDS](https://cds.
 
 ### Examples
 
-All examples are from local setup, but you can run them as it is if you just change `forecast` to `modal run modal/forecast.py:run_inference`.
+All examples are from local setup, but you can run them as it is if you just change `forecast` to `modal run modal/forecast.py` and also make snake case kebab-case -i.e. `model_name` to `model-name`.
 
-Example 1: Forecast using `pangu` model, with ERA5 initial conditions, starting from 2024-04-30T00:00:00 and with a lead time of a week (forecast for the next week, i.e. 168 hours):
+Example 1: Forecast using `graphcast` model, with ERA5 initial conditions, starting from 2024-04-30T00:00:00 and with a lead time of a week (forecast for the next week, i.e. 168 hours):
 
-`forecast --model pangu -ic cds -d 20240403 -o s3://skyrim-dev -l 168`
+`forecast --model_name graphcast --initial_conditions cds --date 20240403 -output_dir s3://skyrim-dev --lead_time 168`
+
+or in modal:
+
+`modal run modal/forecast.py --model-name graphcast --initial-conditions cds --date 20240403 -output-dir s3://skyrim-dev --lead-time 168`
 
 ## Supported initial conditions and caveats
 

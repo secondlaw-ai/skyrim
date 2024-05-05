@@ -4,16 +4,18 @@ import subprocess
 from modal import App, Image, gpu, Volume, forward
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from loguru import logger
 
 load_dotenv()
 CDSAPI_KEY = os.getenv("CDSAPI_KEY")
 CDSAPI_URL = os.getenv("CDSAPI_URL")
 APP_NAME = "skyrim-dev-forecast"
+VOLUME_PATH = "/skyrim/outputs"
 
 if not CDSAPI_KEY or not CDSAPI_URL:
     raise Exception("Missing credentials for CDS")
 
-yesterday = (datetime.now() - timedelta(days=1)).date().replace('-','')
+yesterday = (datetime.now() - timedelta(days=1)).date().isoformat().replace("-", "")
 
 image = (
     Image.from_registry("nvcr.io/nvidia/modulus/modulus:23.11")
@@ -39,15 +41,15 @@ vol = Volume.from_name("forecasts", create_if_missing=True)
     container_idle_timeout=240 * 2,
     timeout=60 * 15,
     image=image,
-    volumes={"/skyrim/outputs": vol},
+    volumes={VOLUME_PATH: vol},
 )
-def run_inference(
-   *args, **kwargs
-):
+def run_inference(*args, **kwargs):
     from skyrim.forecast import main
+
     main(*args, **kwargs)
-    vol.commit()
-    print("Saved forecasts!")
+    if not kwargs.get("output_dir", "").startswith("s3://"):
+        vol.commit()
+    logger.success(f"Saved forecasts!")
 
 
 analysis_image = (
@@ -66,7 +68,7 @@ analysis_image = (
 
 
 @app.function(
-    volumes={"/skyrim/outputs": vol},
+    volumes={VOLUME_PATH: vol},
     image=analysis_image,
     timeout=60 * 60 * 2,  # 2 hour timeout
     memory=(2048, 4096),  # no need more than 4GB
@@ -94,7 +96,16 @@ def run_analysis():
 
 
 @app.local_entrypoint()
-def main(model_name: str = 'pangu', date: str = yesterday, time: str = "0000", lead_time: int = 6, list_models: bool = False, initial_conditions: str = "ifs", output_dir: str = '/skyrim/outputs', filter_vars: str = ''):
+def main(
+    model_name: str = "pangu",
+    date: str = yesterday,
+    time: str = "0000",
+    lead_time: int = 6,
+    list_models: bool = False,
+    initial_conditions: str = "ifs",
+    output_dir: str = VOLUME_PATH,
+    filter_vars: str = "",
+):
     """
     args:
     date: str
@@ -115,4 +126,13 @@ def main(model_name: str = 'pangu', date: str = yesterday, time: str = "0000", l
     Once you are done with the analysis, you can delete the volume with `modal volume rm forecasts /[model_name] -r`
     """
     # model_name: str = 'pangu', date: str = yesterday, time: str = "0000", lead_time: int = 6, list_models: bool = False, initial_conditions: str = "ifs", output_dir: str = '/skyrim/outputs', filter_vars: str = ''
-    run_inference.remote(model_name=model_name, date=date, time=time, lead_time=lead_time, list_models=list_models, initial_conditions=initial_conditions, output_dir=output_dir, filter_vars=filter_vars)
+    run_inference.remote(
+        model_name=model_name,
+        date=date,
+        time=time,
+        lead_time=lead_time,
+        list_models=list_models,
+        initial_conditions=initial_conditions,
+        output_dir=output_dir,
+        filter_vars=filter_vars,
+    )

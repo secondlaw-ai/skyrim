@@ -44,7 +44,8 @@ include = ["skyrim", "skyrim.*"]
 dev = ["black", "ruff", "pytest", "tox"]
 
 [project.urls]
-Homepage = "https://github.com/secondlaw-ai/skyrim"
+"Homepage" = "https://github.com/secondlaw-ai/skyrim"
+"Bug Tracker" = "https://github.com/secondlaw-ai/skyrim/issues"
 
 [tool.black]
 line-length = 88
