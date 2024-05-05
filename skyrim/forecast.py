@@ -1,6 +1,6 @@
 import argparse
-from skyrim import Skyrim
-from skyrim.utils import ensure_cds_loaded
+from skyrim.core import Skyrim
+from skyrim.core.utils import ensure_cds_loaded
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -9,8 +9,7 @@ load_dotenv()
 # ERA5 variables are mean values for previous hour,
 # i.e. 13:01 to 14:00 are labelled as "14:00"
 
-
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model_names",
@@ -56,6 +55,14 @@ if __name__ == "__main__":
         help="Initial conditions provider.",
     )
 
+    parser.add_argument(
+        "--output_dir",
+        "-o",
+        type=str,
+        default="/skyrim/outputs",
+        help="Output directory, can be local or s3 path (e.g. s3://my-path/)",
+    )
+
     args = parser.parse_args()
 
     if args.list_models:
@@ -71,4 +78,10 @@ if __name__ == "__main__":
         time=args.time,
         lead_time=args.lead_time,
         save=True,
+        save_config={
+            'output_dir':args.output_dir
+        }
     )
+
+if __name__ == "__main__":
+    main()

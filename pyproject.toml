@@ -11,17 +11,24 @@ maintainers = [
 ]
 dependencies = [
   "modal",
+  "loguru",
   "xarray[zarr]",
   "base58",
+  "botocore",
+  "aiobotocore",
   'boto3',
-  's3fs',
+  's3fs==0.4.2',
   'zarr',
   'scipy',
+  'pandas'
 ]
 
 [build-system]
 requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
+
+[project.scripts]
+forecast = "skyrim.forecast:main"
 
 [tool.setuptools.packages.find]
 include = ["skyrim", "skyrim.*"]

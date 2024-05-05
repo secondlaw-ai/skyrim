@@ -2,8 +2,8 @@ import datetime
 import torch
 from loguru import logger
 import xarray as xr
-from pathlib import Path
 from .base import GlobalPrediction
+from ...common import OUTPUT_DIR
 from . import MODEL_FACTORY
 
 

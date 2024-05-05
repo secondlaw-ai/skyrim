@@ -1,6 +1,5 @@
 import time
 import datetime
-import torch
 import xarray as xr
 from typing import Literal
 from pathlib import Path
@@ -8,7 +7,6 @@ from loguru import logger
 from earth2mip import schema
 from ...libs.ic import get_data_source
 from ...common import generate_forecast_id, save_forecast
-
 
 class GlobalModel:
     def __init__(

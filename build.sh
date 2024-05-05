@@ -1,8 +1,6 @@
 #!/bin/bash
 # Create a new Conda environment with Python 3.10
 # starting from the base image: pytorch/pytorch:2.2.2-cuda11.8-cudnn8-devel
-conda create -y -n sky python=3.10
-source activate sky
 git clone https://github.com/secondlaw-ai/skyrim.git && cd skyrim && pip install .
 pip install ruamel.yaml
 # Install Jax library with support for CUDA 11
@@ -17,3 +15,5 @@ pip install -v --disable-pip-version-check --no-cache-dir --no-build-isolation \
     --config-settings "--build-option=--cuda_ext" ./
 cd ..
 rm -rf ./apex  # Clean up Apex source after installation
+# finally install all other deps:
+pip install -r requirements.txt
