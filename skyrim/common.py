@@ -12,6 +12,7 @@ from loguru import logger
 from urllib.parse import urlparse
 from io import BytesIO
 
+
 def generate_forecast_id(length=10):
     """
     Generate a unique forecast ID using the current time.
@@ -53,7 +54,11 @@ if not Path(OUTPUT_DIR).exists():
     Path(OUTPUT_DIR).mkdir()
     logger.success(f"Created output directory: {OUTPUT_DIR}")
 
-DEFAULT_SAVE_CONFIG = {"output_dir": OUTPUT_DIR, "file_type": "netcdf", "filter_vars": []}
+DEFAULT_SAVE_CONFIG = {
+    "output_dir": OUTPUT_DIR,
+    "file_type": "netcdf",
+    "filter_vars": [],
+}
 
 
 def remote_forecast_exists(path: str):
