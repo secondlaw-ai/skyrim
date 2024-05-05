@@ -93,7 +93,7 @@ class GlobalModel:
                 start_time, source = pred_time, "file"
                 output_paths.append(output_path)
             logger.success(f"Rollout step {n+1}/{n_steps} completed")
-        return pred, output_paths
+        return pred, list(set(output_paths))
 
 
 class GlobalPrediction:

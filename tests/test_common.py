@@ -1,6 +1,7 @@
 import numpy as np
 import xarray as xr
 import subprocess
+import pytest
 from skyrim.common import save_forecast, generate_forecast_id
 from datetime import datetime
 from pathlib import Path
@@ -46,7 +47,7 @@ def test_saves_forecast_locally():
     Path(output_path).unlink()
     p.rmdir()
 
-
+@pytest.mark.integ
 def test_appends_forecast_in_s3():
     ds = mock_forecast()
     ds2 = ds.copy()

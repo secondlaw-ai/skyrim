@@ -92,7 +92,7 @@ class GlobalEnsemble:
                     start_time=start_time,
                     n_steps=n_steps,
                     save=save,
-                    output_dir=output_dir,
+                    output_dir=OUTPUT_DIR,
                 )
                 output_paths.extend(paths)
                 predictions.append(pred)
@@ -105,7 +105,7 @@ class GlobalEnsemble:
         if save:
             logger.debug("Caculating and saving ensemble predictions.")
             ens_output_paths = self._save_ensembled_outputs(
-                output_paths, n_steps, output_dir
+                output_paths, n_steps, OUTPUT_DIR
             )
         return averaged_prediction, ens_output_paths
 

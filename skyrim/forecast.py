@@ -42,8 +42,7 @@ def main(
     model = Skyrim(
         model_name, ic_source=initial_conditions
     )
-
-    pred = model.predict(
+    pred, output_paths = model.predict(
         date=date,
         time=time,
         lead_time=lead_time,
@@ -53,6 +52,7 @@ def main(
             "filter_vars": filter_vars.split(",") if bool(filter_vars) else [],  # TODO: sanitize vars
         }
     )
+    return output_paths 
 
 if __name__ == "__main__":
     main()

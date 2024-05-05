@@ -1,6 +1,6 @@
-from skyrim.core.models.base import GlobalModel
 from dataclasses import dataclass
 from skyrim.libs.ic import IfsDatasource
+from skyrim.core.models.base import GlobalModel
 
 
 # TODO: build a timeloop
