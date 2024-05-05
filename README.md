@@ -1,9 +1,8 @@
 <h1 align="center">
- 
  <a href="https://www.secondlaw.xyz">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/skyrim_banner_1.png"/>
-    <img height=320 src="./assets/skyrim_banner_1.png"/>
+    <img height="auto" width="90%" src="./assets/skyrim_banner_1.png"/>
   </picture>
  </a>
  <br></br>
@@ -38,26 +37,26 @@ This by default uses `pangu` model to forecast for the next 6 hours, starting fr
 
 `modal run modal/forecast.py:run_analysis`
 
-The forecast will be at `/skyrim/outputs/` volume that you can access from the jupyter notebook. 
+The forecast will be at `/skyrim/outputs/` volume that you can access from the jupyter notebook.
+
 ```
 import xarray as xr
 forecast = xr.open_dataset('/skyrim/outputs/[forecast_id]/[filename], engine='scipy')
 ```
 
 Once you are done, best is to delete the volume as a daily forecast is about 2GB:
-`modal volume rm forecasts /[model_name] -r` 
+`modal volume rm forecasts /[model_name] -r`
 
 If you don't want to use modal volume, and want to aggregate results in cloud, we currently support s3 buckets. You just have to run:
 
-`modal run modal/forecast.py::run_inference -o s3://skyrim-dev` where `skyrim-dev` is the bucket that you want to aggregate the forecasts. By default, `zarr` format is used to store in AWS/GCP so you can read and move only the parts of the forecasts that you need. 
-
+`modal run modal/forecast.py::run_inference -o s3://skyrim-dev` where `skyrim-dev` is the bucket that you want to aggregate the forecasts. By default, `zarr` format is used to store in AWS/GCP so you can read and move only the parts of the forecasts that you need.
 
 Say interested in wind at 37.0344° N, 27.4305 E to see if we can kite. If we are interested in wind speed, we need to pull wind vectors at about surface level, these are u10m and v10m [components](http://colaweb.gmu.edu/dev/clim301/lectures/wind/wind-uv) of wind. Here is how you do it:
 
 ```
 import xarray as xr
 import pandas as pd
-zarr_store_path = "s3://skyrim-dev/[forecast_id]" 
+zarr_store_path = "s3://skyrim-dev/[forecast_id]"
 forecast = xr.open_dataset(zarr_store_path, engine='zarr') # reads the metadata
 df = forecast.sel(lat=37.0344, lon=27.4305, channel=['u10m', 'v10m']).to_pandas()
 ```
@@ -71,6 +70,7 @@ Or if you are running on your own GPUs, installed either via [bare metal](#bare-
 
 1. You will need a NVIDIA GPU with at least 16GB memory, ideally 24GB. We are working on quantization as well so that in the future it would be possible to run simulations with much less compute. Have an environment set with Python +3.10, Pytorch 2.2.2 and CUDA 11.8. Or if easier start with the docker image: `pytorch/pytorch:2.2.2-cuda11.8-cudnn8-devel`.
 2. Install conda (miniconda for instance). Then run in that environment:
+
 ```
 conda create -y -n skyenv python=3.10
 conda activate skyenv
