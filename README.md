@@ -27,14 +27,14 @@ Skyrim allows you to run any large weather model with a consumer grade GPU. Unti
 
 ## Run your first forecast
 
-You will need a [modal](https://modal.com/) key to run your forecast as we are loading large weather models (it requires NVIDIA GPU with at least 24GB memory). Modal comes with $30 free credits and a single forecast costs about 2 cents. Alternatively, see the bare metal or vast.ai setup to run on your own GPUs.
+You will need a [modal](https://modal.com/) key to run your forecast as we are loading large weather models (it requires NVIDIA GPU with at least 24GB memory). Modal comes with $30 free credits and a single forecast costs about 2 cents. Alternatively, see the [bare metal](#bare-metal) or [vast.ai](#vastai-setup) setup to run on your own GPUs.
 
 ### Forecasting using Modal:
 
 If you are running on modal then run:
 `modal run modal/forecast.py:run_inference`
 
-This by default uses `graphcast` to forecast for a day (tomorrow), gets initial conditions from IFS and writes the forecast to a modal volume. You can explore the forecast by running a notebook (without GPU) in modal:
+This by default uses `pangu` model to forecast for the next 6 hours, starting from yesterday. It gets initial conditions from ECMWF IFS and writes the forecast to a modal volume. You can explore the forecast by running a notebook (without GPU) in modal:
 
 `modal run modal/forecast.py:run_analysis`
 
@@ -55,7 +55,6 @@ If you don't want to use modal volume, and want to aggregate results in cloud, w
 Say interested in wind at 37.0344° N, 27.4305 E to see if we can kite. If we are interested in wind speed, we need to pull wind vectors at about surface level, these are u10m and v10m [components](http://colaweb.gmu.edu/dev/clim301/lectures/wind/wind-uv) of wind. Here is how you do it:
 
 ```
-# requires xarray[zarr] to be installed
 import xarray as xr
 import pandas as pd
 zarr_store_path = "s3://skyrim-dev/[forecast_id]" 

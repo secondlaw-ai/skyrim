@@ -20,7 +20,8 @@ dependencies = [
   's3fs==0.4.2',
   'zarr',
   'scipy',
-  'pandas'
+  'pandas',
+  'click
 ]
 
 [build-system]

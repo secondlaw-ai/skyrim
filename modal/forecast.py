@@ -3,6 +3,7 @@ import secrets
 import subprocess
 from modal import App, Image, gpu, Volume, forward
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
 load_dotenv()
 CDSAPI_KEY = os.getenv("CDSAPI_KEY")
@@ -12,6 +13,7 @@ APP_NAME = "skyrim-dev-forecast"
 if not CDSAPI_KEY or not CDSAPI_URL:
     raise Exception("Missing credentials for CDS")
 
+yesterday = (datetime.now() - timedelta(days=1)).date().replace('-','')
 
 image = (
     Image.from_registry("nvcr.io/nvidia/modulus/modulus:23.11")
@@ -40,25 +42,10 @@ vol = Volume.from_name("forecasts", create_if_missing=True)
     volumes={"/skyrim/outputs": vol},
 )
 def run_inference(
-    model_name: str,
-    lead_time: int,
-    date: str,
-    out: str = "/skyrim/outputs",
-    vars: str = "",
+   *args, **kwargs
 ):
-    from skyrim.core import Skyrim
-
-    model = Skyrim(model_name)
-    pred, output_paths = model.predict(
-        date=date,
-        time="0000",
-        lead_time=lead_time,
-        save=True,
-        save_config={
-            "output_dir": out,
-            "filter_vars": vars.split(",") if bool(vars) else [],  # TODO: sanitize vars
-        },
-    )
+    from skyrim.forecast import main
+    main(*args, **kwargs)
     vol.commit()
     print("Saved forecasts!")
 
@@ -107,7 +94,7 @@ def run_analysis():
 
 
 @app.local_entrypoint()
-def main(date: str = "20240420", model: str = "pangu", lead_time: int = 6):
+def main(model_name: str = 'pangu', date: str = yesterday, time: str = "0000", lead_time: int = 6, list_models: bool = False, initial_conditions: str = "ifs", output_dir: str = '/skyrim/outputs', filter_vars: str = ''):
     """
     args:
     date: str
@@ -127,4 +114,5 @@ def main(date: str = "20240420", model: str = "pangu", lead_time: int = 6):
     Alternatively, if you want to work with the data locally, you can run `modal volume get forecasts /skyrim/outputs/[model_name]/[filename] .[your_local_path]`
     Once you are done with the analysis, you can delete the volume with `modal volume rm forecasts /[model_name] -r`
     """
-    run_inference.remote(model, lead_time, date)
+    # model_name: str = 'pangu', date: str = yesterday, time: str = "0000", lead_time: int = 6, list_models: bool = False, initial_conditions: str = "ifs", output_dir: str = '/skyrim/outputs', filter_vars: str = ''
+    run_inference.remote(model_name=model_name, date=date, time=time, lead_time=lead_time, list_models=list_models, initial_conditions=initial_conditions, output_dir=output_dir, filter_vars=filter_vars)

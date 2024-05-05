@@ -29,3 +29,5 @@ CDS_API_MAP = CDS_SINGLE_API_MAP | CDS_PRESSURE_API_MAP
 
 def get_cds_api_map(level_type: Literal["single", "pressure"]):
     return CDS_SINGLE_API_MAP if level_type == "single" else CDS_PRESSURE_API_MAP
+
+AVAILABLE_MODELS = ['pangu', 'fourcastnet', 'fourcastnet_v2', 'graphcast', 'dlwp']
