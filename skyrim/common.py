@@ -12,6 +12,8 @@ from loguru import logger
 from urllib.parse import urlparse
 from io import BytesIO
 
+AVAILABLE_MODELS = ["pangu", "fourcastnet", "fourcastnet_v2", "graphcast", "dlwp"]
+
 
 def generate_forecast_id(length=10):
     """

@@ -14,7 +14,7 @@ repos:
     hooks:
       - id: unit-test
         name: unit-test
-        entry: pytest tests --ignore=tests/integration
+        entry: pytest tests --ignore=tests/integration -m "not integ"
         language: system
         pass_filenames: false
         always_run: true

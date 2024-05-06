@@ -1,13 +1,15 @@
+.PHONY: build install install-core lint test-publish publish clean format test test-unit test-integration
+
 build:
-	rm -rf ./dist/** && python -m build
+	pip install -e . && rm -rf ./dist/** && python -m build
 install:
 	pip install -e '.[dev]'
 install-core:
 	pip install -e '.[dev]' && pip install -r requirements.txt
-test-publish:
-	twine upload -r testpypi dist/*
 lint:
 	ruff --fix .
+test-publish:
+	twine upload -r testpypi dist/*
 publish:
 	twine upload -r pypi dist/*
 clean:

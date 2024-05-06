@@ -1,10 +1,9 @@
 import click
-from skyrim.core import Skyrim
-from skyrim.core.consts import AVAILABLE_MODELS
-from skyrim.core.utils import ensure_cds_loaded
+import subprocess
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from pathlib import Path
+from skyrim.common import AVAILABLE_MODELS
 
 yesterday = (datetime.now() - timedelta(days=1)).date().isoformat().replace("-", "")
 
@@ -26,6 +25,10 @@ def run_forecast(
     output_dir: str,
     filter_vars: str,
 ):
+    # for the local inference setup you need core packages imported here:
+    from skyrim.core import Skyrim
+    from skyrim.core.utils import ensure_cds_loaded
+
     if list_models:
         available_models = Skyrim.list_available_models()
         print("Available models:", available_models)
@@ -68,7 +71,7 @@ def run_forecast(
     "--initial_conditions",
     "-ic",
     type=click.Choice(["cds", "ifs", "gfs"], case_sensitive=False),
-    default="ifs",
+    default="gfs",
     help="Initial conditions provider.",
 )
 @click.option(
@@ -85,6 +88,13 @@ def run_forecast(
     default="",
     help="Filter variables such as t2m (temperature) before saving forecasts.",
 )
+@click.option(
+    "--modal",
+    "-mo",
+    type=bool,
+    default=False,
+    help="If set true, then will run on modal.",
+)
 def main(
     model_name: str,
     date: str,
@@ -94,7 +104,32 @@ def main(
     initial_conditions: str,
     output_dir: str,
     filter_vars: str,
+    modal: bool,
 ):
+    if modal:
+        return subprocess.run(
+            [
+                "modal",
+                "run",
+                "remote/forecast.py",
+                "--model-name",
+                model_name,
+                "--date",
+                date,
+                "--time",
+                time,
+                "--lead-time",
+                str(lead_time),
+                "--initial-conditions",
+                initial_conditions,
+                "--output-dir",
+                output_dir,
+                "--filter-vars",
+                filter_vars,
+            ],
+            check=True,
+        )
+
     return run_forecast(
         model_name,
         date,

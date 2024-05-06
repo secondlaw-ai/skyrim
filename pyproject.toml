@@ -38,7 +38,7 @@ dependencies = [
 forecast = "skyrim.forecast:main"
 
 [tool.setuptools.packages.find]
-include = ["skyrim", "skyrim.*"]
+include = ["skyrim", "skyrim.*", "remote"]
 
 [project.optional-dependencies]
 dev = [
@@ -54,7 +54,8 @@ dev = [
 
 [project.urls]
 "Homepage" = "https://github.com/secondlaw-ai/skyrim"
-"Bug Tracker" = "https://github.com/secondlaw-ai/skyrim/issues"
+"Tracker" = "https://github.com/secondlaw-ai/skyrim/issues"
+"Docs" = "https://github.com/secondlaw-ai/skyrim"
 
 [tool.black]
 line-length = 88
@@ -97,3 +98,14 @@ exclude_lines = ["pragma: no cover"]
 omit = ["tests/*"]
 show_missing = true
 fail_under = 20
+
+[tool.bumpver]
+current_version = "0.0.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "Bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = ['version = "{version}"']
