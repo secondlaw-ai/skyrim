@@ -1,3 +1,7 @@
+"""
+Build repo from the source and deploy to modal.
+"""
+
 import os
 import secrets
 import subprocess
@@ -19,7 +23,7 @@ yesterday = (datetime.now() - timedelta(days=1)).date().isoformat().replace("-",
 
 image = (
     Image.from_registry("nvcr.io/nvidia/modulus/modulus:23.11")
-    .run_commands("git clone https://github.com/secondlaw-ai/skyrim")
+    .run_commands("git clone https://github.com/secondlaw-ai/skyrim", force_build=True)
     .workdir("/skyrim")
     .run_commands("pip install .")
     .run_commands("pip install -r requirements.txt")

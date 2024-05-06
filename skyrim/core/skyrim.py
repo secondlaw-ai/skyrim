@@ -8,12 +8,6 @@ from .models.ensemble import GlobalEnsemblePrediction, GlobalEnsemble
 
 load_dotenv()
 
-OUTPUT_DIR = Path(__file__).parent.parent.resolve() / Path("./outputs")
-
-if not OUTPUT_DIR.exists():
-    OUTPUT_DIR.mkdir()
-    logger.success(f"Created output directory: {OUTPUT_DIR}")
-
 
 def wrap_prediction(model_names, source):
     if len(model_names) > 1:
