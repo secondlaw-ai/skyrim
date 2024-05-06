@@ -72,7 +72,7 @@ forecast = xr.open_dataset('/skyrim/outputs/[forecast_id]/[filename], engine='sc
 Once you are done, best is to delete the volume as a daily forecast is about 2GB:
 
 ```bash
-modal volume rm forecasts /[model_name] -r
+modal volume rm forecasts /[forecast_id] -r
 ```
 
 If you don't want to use modal volume, and want to aggregate results in a bucket (currently only s3), you just have to run:
@@ -83,9 +83,11 @@ modal run skyrim/modal/forecast.py --output_dir s3://skyrim-dev
 
 where `skyrim-dev` is the bucket that you want to aggregate the forecasts. By default, `zarr` format is used to store in AWS/GCP so you can read and move only the parts of the forecasts that you need.
 
+See [examples](#examples) section for more.✌️
+
 ### Forecasting with your own GPUs:
 
-If you are running on your own GPUs, installed either via [bare metal](#bare-metal) or via [vast.ai](#vast-ai-setup) then you can just run:
+If you are running on your own GPUs, installed either via [bare metal](#bare-metal) or via containers such as [vast.ai](#vast-ai-setup) then you can just run:
 
 `forecast`
 
@@ -94,6 +96,12 @@ or you can pass in options as such:
 `forecast -m graphcast --lead_time 24 --initial_conditions cds --date 20240330`
 
 See [examples](#examples) section for more.✌️
+
+#### vast.ai setup
+
+1. Find a machine you like RTX3090 or above with at least 24GB memory. Make sure you have good bandwith (+500MB/s).
+2. Select the instance template from [here](https://cloud.vast.ai/?ref_id=128656&template_id=1883215a8487ec6ea9ad68a7cdb38c5e).
+3. Then clone the repo and `pip install . && pip install -r requirements.txt`
 
 #### Bare metal
 
@@ -108,21 +116,13 @@ conda activate skyenv
 
 Note: Because we will be building from scratch this can take long (we need to install pytorch extensions through NVIDIA Apex package).
 
-#### vast.ai setup
-
-1. Find a machine you like RTX3090 or above with at least 24GB memory. Make sure you have good bandwith (+500MB/s).
-2. Select the instance template from [here](https://cloud.vast.ai/?ref_id=128656&template_id=1883215a8487ec6ea9ad68a7cdb38c5e).
-3. Then clone the repo and `pip install . && pip install -r requirements.txt`
-
-## Run forecasts with different models, initial conditions, dates
+## Examples
 
 For each run, you will first pull the initial conditions of your interest (most recent one by default), then the model will run for the desired time step. Initial conditions are pulled from GFS, ECMWF IFS (Operational) or CDS (ERA5 Reanalysis Dataset).
 
 If you are using CDS initial conditions, then you will need a [CDS](https://cds.climate.copernicus.eu/user/login?destination=%2Fcdsapp%23!%2Fdataset%2Freanalysis-era5-single-levels) API key in your `.env` –`cp .env.example` and paste.
 
-## Examples
-
-All examples are from local setup, but you can run them as it is if you just change `forecast` to `modal run skyrim/modal/forecast.py` and also make snake case kebab-case -i.e. `model_name` to `model-name`.
+All examples can be run using `forecast` or `modal run skyrim/modal/forecast.py`. You just have to make snake case options kebab-case -i.e. `model_name` to `model-name`.
 
 ### Example 1: Pick models, initial conditions, lead times
 
