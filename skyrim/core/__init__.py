@@ -1,3 +1,3 @@
 from pathlib import Path
-from .skyrim import Skyrim, OUTPUT_DIR
+from .skyrim import Skyrim
 from .models.base import GlobalPredictionRollout
