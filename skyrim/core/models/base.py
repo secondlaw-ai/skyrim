@@ -5,8 +5,8 @@ from typing import Literal
 from pathlib import Path
 from loguru import logger
 from earth2mip import schema
-from ..libs.ic import get_data_source
-
+from ...libs.ic import get_data_source
+from ...common import generate_forecast_id, save_forecast
 
 class GlobalModel:
     def __init__(
@@ -15,13 +15,10 @@ class GlobalModel:
         clock = time.time()
         self.model_name = model_name
         self.ic_source = ic_source
-
         logger.debug(f"Building {model_name} model...")
         self.model = self.build_model()
-
         logger.debug(f"Building {self.ic_source} data source...")
         self.data_source = self.build_datasource()
-
         logger.success(f"Initialized {model_name} in {time.time() - clock:.1f} seconds")
 
     def build_model(self):
@@ -71,60 +68,32 @@ class GlobalModel:
     def rollout(
         self,
         start_time: datetime.datetime,
-        n_steps: int,
-        save: bool,
-        output_dir: str | Path,
+        n_steps: int = 3,
+        save: bool = True,
+        save_config: dict = {},
     ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
         # it does not make sense to keep all the results in the memory
         # return final pred and list of paths of the saved predictions
         # TODO: add functionality to rollout from a given initial condition
-        pred, output_paths, ic_source = None, [], self.ic_source
+        pred, output_paths, source = None, [], self.ic_source
+        forecast_id = save_config.get("forecast_id", generate_forecast_id())
+        save_config.update({"forecast_id": forecast_id})
         for n in range(n_steps):
             pred = self.predict_one_step(start_time, initial_condition=pred)
             pred_time = start_time + self.time_step
             if save:
-                output_path = self.save_output(
-                    pred=pred,
-                    start_time=start_time,
-                    pred_time=pred_time,
-                    ic_source=ic_source,
-                    output_dir=output_dir,
+                output_path = save_forecast(
+                    pred,
+                    self.model_name,
+                    start_time,
+                    pred_time,
+                    source,
+                    config=save_config,
                 )
-                start_time, ic_source = pred_time, "file"
+                start_time, source = pred_time, "file"
                 output_paths.append(output_path)
             logger.success(f"Rollout step {n+1}/{n_steps} completed")
-        return pred, output_paths
-
-    def save_output(
-        self,
-        pred: xr.DataArray | xr.Dataset,
-        start_time: datetime.datetime,
-        pred_time: datetime.datetime,
-        ic_source: str,
-        output_dir: str | Path,
-    ):
-        # e.g.:
-        # filename = "pangu__20180101_00:00__20180101_06:00.nc"
-        # output_path = "./outputs/pangu/pangu__20180101_00:00__20180101_06:00.nc"
-        filename = (
-            f"{self.model_name}" + "__"
-            f"{ic_source}__"
-            f"{start_time.strftime('%Y%m%d_%H:%M')}"
-            + "__"
-            + f"{pred_time.strftime('%Y%m%d_%H:%M')}.nc"
-        )
-        output_path = output_dir/ self.model_name / filename
-
-        logger.info(f"Saving outputs to {output_path}")
-        if not output_path.parent.exists():
-            logger.info(
-                f"Creating parent directory to save outputs: {output_path.parent}"
-            )
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        pred.to_netcdf(output_path)
-        logger.success(f"outputs saved to {output_path}")
-        return output_path
+        return pred, list(set(output_paths))
 
 
 class GlobalPrediction:

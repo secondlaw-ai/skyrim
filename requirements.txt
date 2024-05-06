@@ -2,4 +2,3 @@ earth2mip @ git+https://github.com/NVIDIA/earth2mip.git@86b11fe4ba2f19641802112e
 -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 jax[cuda12_local]==0.4.16
 pytest-regtest==1.5.1
-modal

@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "Skyrim"
 version = "0.1.0"
@@ -5,17 +9,43 @@ description = "AI weather models united."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-maintainers = [{ name = "SecondLaw Research", email = "efe@2lw.ai" }]
+maintainers = [
+  { name = "SecondLaw Research", email = "efe@2lw.ai" },
+  { name = "SecondLaw Research", email = "murat@2lw.ai" },
+]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+]
+keywords = ["pytorch", "weather", "forecasting", "ai", "ml", "xarray", "dl"]
+dependencies = [
+  "modal",
+  "loguru",
+  "xarray[zarr]",
+  "base58",
+  "botocore",
+  "aiobotocore",
+  'boto3',
+  's3fs==0.4.2',
+  'zarr',
+  'scipy',
+  'pandas',
+  'click',
+]
 
-[build-system]
-requires = ["setuptools", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
+[project.scripts]
+forecast = "skyrim.forecast:main"
 
 [tool.setuptools.packages.find]
 include = ["skyrim", "skyrim.*"]
 
 [project.optional-dependencies]
 dev = ["black", "ruff", "pytest", "tox"]
+
+[project.urls]
+"Homepage" = "https://github.com/secondlaw-ai/skyrim"
+"Bug Tracker" = "https://github.com/secondlaw-ai/skyrim/issues"
 
 [tool.black]
 line-length = 88

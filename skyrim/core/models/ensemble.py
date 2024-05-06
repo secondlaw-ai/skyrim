@@ -2,8 +2,8 @@ import datetime
 import torch
 from loguru import logger
 import xarray as xr
-from pathlib import Path
 from .base import GlobalPrediction
+from ...common import OUTPUT_DIR
 from . import MODEL_FACTORY
 
 
@@ -75,9 +75,9 @@ class GlobalEnsemble:
     def rollout(
         self,
         start_time: datetime.datetime,
-        n_steps: int,
-        save: bool,
-        output_dir: str | Path,
+        n_steps: int = 3,
+        save: bool = True,
+        save_config: dict = {},
     ):
         """Perform a rollout for all models, aggregating predictions and managing resources."""
         # TODO: seperate model predictions should be deleted after final ens calculation?
@@ -92,7 +92,7 @@ class GlobalEnsemble:
                     start_time=start_time,
                     n_steps=n_steps,
                     save=save,
-                    output_dir=output_dir,
+                    output_dir=OUTPUT_DIR,
                 )
                 output_paths.extend(paths)
                 predictions.append(pred)
@@ -105,7 +105,7 @@ class GlobalEnsemble:
         if save:
             logger.debug("Caculating and saving ensemble predictions.")
             ens_output_paths = self._save_ensembled_outputs(
-                output_paths, n_steps, output_dir
+                output_paths, n_steps, OUTPUT_DIR
             )
         return averaged_prediction, ens_output_paths
 

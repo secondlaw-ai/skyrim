@@ -1,9 +1,9 @@
-from datetime import datetime
 import xarray as xr
-from typing import Any
-from earth2mip import initial_conditions, time_loop
 import numpy as np
 import torch
+from datetime import datetime
+from typing import Any
+from earth2mip import initial_conditions, time_loop
 from loguru import logger
 
 

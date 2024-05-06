@@ -1,9 +1,8 @@
 <h1 align="center">
- 
  <a href="https://www.secondlaw.xyz">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/skyrim_banner_1.png"/>
-    <img height=320 src="./assets/skyrim_banner_1.png"/>
+    <img height="auto" width="90%" src="./assets/skyrim_banner_1.png"/>
   </picture>
  </a>
  <br></br>
@@ -23,43 +22,92 @@ Skyrim allows you to run any large weather model with a consumer grade GPU. Unti
 
 ## Installation
 
-You will need a NVIDIA GPU with at least 16GB memory, ideally 24GB. We are working on quantization as well so that in the future it would be possible to run simulations with much less compute.
+`pip install skyrim`
 
-### Bare metal
+## Run your first forecast
 
-Currently, best is to set up your environment using Docker.
+You will need a [modal](https://modal.com/) key to run your forecast as we are loading large weather models (it requires NVIDIA GPU with at least 24GB memory). Modal comes with $30 free credits and a single forecast costs about 2 cents. Alternatively, see the [bare metal](#bare-metal) or [vast.ai](#vastai-setup) setup to run on your own GPUs.
 
-1. Start with a docker base image `pytorch/pytorch:2.2.2-cuda11.8-cudnn8-devel`.
-2. Then clone the repo and run `./build.sh`.
+### Forecasting using Modal:
 
-### vast.ai setup
+If you are running on modal then run:
+`modal run modal/forecast.py:run_inference`
+
+This by default uses `pangu` model to forecast for the next 6 hours, starting from yesterday. It gets initial conditions from ECMWF IFS and writes the forecast to a modal volume. You can explore the forecast by running a notebook (without GPU) in modal:
+
+`modal run modal/forecast.py:run_analysis`
+
+The forecast will be at `/skyrim/outputs/` volume that you can access from the jupyter notebook.
+
+```
+import xarray as xr
+forecast = xr.open_dataset('/skyrim/outputs/[forecast_id]/[filename], engine='scipy')
+```
+
+Once you are done, best is to delete the volume as a daily forecast is about 2GB:
+`modal volume rm forecasts /[model_name] -r`
+
+If you don't want to use modal volume, and want to aggregate results in cloud, we currently support s3 buckets. You just have to run:
+
+`modal run modal/forecast.py::run_inference -o s3://skyrim-dev` where `skyrim-dev` is the bucket that you want to aggregate the forecasts. By default, `zarr` format is used to store in AWS/GCP so you can read and move only the parts of the forecasts that you need.
+
+Say interested in wind at 37.0344° N, 27.4305 E to see if we can kite. If we are interested in wind speed, we need to pull wind vectors at about surface level, these are u10m and v10m [components](http://colaweb.gmu.edu/dev/clim301/lectures/wind/wind-uv) of wind. Here is how you do it:
+
+```
+import xarray as xr
+import pandas as pd
+zarr_store_path = "s3://skyrim-dev/[forecast_id]"
+forecast = xr.open_dataset(zarr_store_path, engine='zarr') # reads the metadata
+df = forecast.sel(lat=37.0344, lon=27.4305, channel=['u10m', 'v10m']).to_pandas()
+```
+
+### Forecasting with your own GPUs:
+
+Or if you are running on your own GPUs, installed either via [bare metal](#bare-metal) or via [vast.ai](#vast-ai-setup) then you can run:
+`forecast`
+
+#### Bare metal
+
+1. You will need a NVIDIA GPU with at least 16GB memory, ideally 24GB. We are working on quantization as well so that in the future it would be possible to run simulations with much less compute. Have an environment set with Python +3.10, Pytorch 2.2.2 and CUDA 11.8. Or if easier start with the docker image: `pytorch/pytorch:2.2.2-cuda11.8-cudnn8-devel`.
+2. Install conda (miniconda for instance). Then run in that environment:
+
+```
+conda create -y -n skyenv python=3.10
+conda activate skyenv
+./build.sh
+```
+
+#### vast.ai setup
 
 1. Find a machine you like RTX3090 or above with at least 24GB memory. Make sure you have good bandwith (+500MB/s).
 2. Select the instance template from [here](https://cloud.vast.ai/?ref_id=128656&template_id=1883215a8487ec6ea9ad68a7cdb38c5e).
-3. Then clone the repo and `pip install -r requirements.txt`
+3. Then clone the repo and `pip install -e . && pip install -r requirements.txt`
 
-## Your first forecast
+## Run forecasts with different models, initial conditions, dates
 
 For each run, you will first pull the initial conditions of your interest (most recent one by default), then the model will run for the desired time step. Initial conditions are pulled from GFS, ECMWF IFS (Operational) or CDS (ERA5 Reanalysis Dataset).
 
-Example: To run for the next 24h given the most recent ECWMF IFS initial conditions using `pangu` model:
+If you are using CDS initial conditions, then you will need a [CDS](https://cds.climate.copernicus.eu/user/login?destination=%2Fcdsapp%23!%2Fdataset%2Freanalysis-era5-single-levels) API key in your `.env` –`cp .env.example` and paste.
 
-`python run.py --model pangu -ic ifs`
+### Examples
 
-Or in Python:
+All examples are from local setup, but you can run them as it is if you just change `forecast` to `modal run modal/forecast.py` and also make snake case kebab-case -i.e. `model_name` to `model-name`.
 
-```python
-from skyrim import Skyrim
+Example 1: Forecast using `graphcast` model, with ERA5 initial conditions, starting from 2024-04-30T00:00:00 and with a lead time of a week (forecast for the next week, i.e. 168 hours):
 
-# to see all the available models
-print(Skyrim.list_available_models())
+`forecast --model_name graphcast --initial_conditions cds --date 20240403 -output_dir s3://skyrim-dev --lead_time 168`
 
-# initialize pangu model
-model = Skyrim("pangu")
+or in modal:
 
-# rollout predictions from a date and time of your choice
-pred, output_paths = model.predict(date="20180101", time="0000",lead_time=24, save=True)
-```
+`modal run modal/forecast.py --model-name graphcast --initial-conditions cds --date 20240403 -output-dir s3://skyrim-dev --lead-time 168`
+
+## Supported initial conditions and caveats
+
+1. GFS
+2. ECMWF IFS
+3. ERA5 Re-analysis Dataset
+
+## Large weather models supported
 
 Currently supported models are:
 

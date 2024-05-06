@@ -57,8 +57,8 @@ class Skyrim:
         date: str,  # YYYMMDD, e.g. 20180101
         time: str,  # HHMM, e.g. 0300, 1400, etc
         lead_time: int = 6,  # in hours 0-24, will be clipped to nearest 6 multiple
-        save: bool = True,
-        output_dir: str | Path = OUTPUT_DIR,
+        save: bool = False,
+        save_config: dict = {},
     ):
         # TODO: add checks for date and time format
 
@@ -83,7 +83,7 @@ class Skyrim:
             start_time=start_time,
             n_steps=n_steps,
             save=save,
-            output_dir=output_dir,
+            save_config=save_config,
         )
         # You might want to do something with pred or output_paths here
         logger.debug("Prediction completed successfully")
