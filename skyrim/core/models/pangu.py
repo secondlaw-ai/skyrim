@@ -34,7 +34,7 @@ class PanguModel(GlobalModel):
 
     Parameters:
     - model_name (str): Name of the model, default is 'pangu'.
-"""
+    """
 
     model_name = "pangu"
 
