@@ -39,11 +39,16 @@ You will need a [modal](https://modal.com/) key to run your forecast as we are l
 ### Forecasting using Modal:
 
 If you are running on modal then run:
-`modal run modal/forecast.py`
+
+```bash
+modal run modal/forecast.py
+```
 
 This by default uses `pangu` model to forecast for the next 6 hours, starting from yesterday. It gets initial conditions from NOAA GFS and writes the forecast to a modal volume. You can explore the forecast by running a notebook (without GPU) in modal:
 
-`modal run modal/forecast.py:run_analysis`
+```bash
+modal run modal/forecast.py:run_analysis
+```
 
 The forecast will be at `/skyrim/outputs/` volume that you can access from the jupyter notebook.
 
@@ -53,15 +58,22 @@ forecast = xr.open_dataset('/skyrim/outputs/[forecast_id]/[filename], engine='sc
 ```
 
 Once you are done, best is to delete the volume as a daily forecast is about 2GB:
-`modal volume rm forecasts /[model_name] -r`
+
+```bash
+modal volume rm forecasts /[model_name] -r
+```
 
 If you don't want to use modal volume, and want to aggregate results in cloud, we currently support s3 buckets. You just have to run:
 
-`modal run modal/forecast.py --output_dir s3://skyrim-dev` where `skyrim-dev` is the bucket that you want to aggregate the forecasts. By default, `zarr` format is used to store in AWS/GCP so you can read and move only the parts of the forecasts that you need.
+```bash
+modal run modal/forecast.py --output_dir s3://skyrim-dev
+```
+
+where `skyrim-dev` is the bucket that you want to aggregate the forecasts. By default, `zarr` format is used to store in AWS/GCP so you can read and move only the parts of the forecasts that you need.
 
 Say interested in wind at 37.0344° N, 27.4305 E to see if we can kite. If we are interested in wind speed, we need to pull wind vectors at about surface level, these are u10m and v10m [components](http://colaweb.gmu.edu/dev/clim301/lectures/wind/wind-uv) of wind. Here is how you do it:
 
-```
+```python
 import xarray as xr
 import pandas as pd
 zarr_store_path = "s3://skyrim-dev/[forecast_id]"
@@ -84,7 +96,7 @@ or you can pass in options as such:
 1. You will need a NVIDIA GPU with at least 16GB memory, ideally 24GB. We are working on quantization as well so that in the future it would be possible to run simulations with much less compute. Have an environment set with Python +3.10, Pytorch 2.2.2 and CUDA 11.8. Or if easier start with the docker image: `pytorch/pytorch:2.2.2-cuda11.8-cudnn8-devel`.
 2. Install conda (miniconda for instance). Then run in that environment:
 
-```
+```bash
 conda create -y -n skyenv python=3.10
 conda activate skyenv
 ./build.sh
@@ -108,11 +120,15 @@ All examples are from local setup, but you can run them as it is if you just cha
 
 Example 1: Forecast using `graphcast` model, with ERA5 initial conditions, starting from 2024-04-30T00:00:00 and with a lead time of a week (forecast for the next week, i.e. 168 hours):
 
-`forecast --model_name graphcast --initial_conditions cds --date 20240403 -output_dir s3://skyrim-dev --lead_time 168`
+```bash
+forecast --model_name graphcast --initial_conditions cds --date 20240403 -output_dir s3://skyrim-dev --lead_time 168
+```
 
 or in modal:
 
-`modal run modal/forecast.py --model-name graphcast --initial-conditions cds --date 20240403 -output-dir s3://skyrim-dev --lead-time 168`
+```bash
+modal run modal/forecast.py --model-name graphcast --initial-conditions cds --date 20240403 -output-dir s3://skyrim-dev --lead-time 168
+```
 
 ## Supported initial conditions and caveats
 
