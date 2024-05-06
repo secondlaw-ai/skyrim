@@ -33,8 +33,8 @@ def run_forecast(
         available_models = Skyrim.list_available_models()
         print("Available models:", available_models)
         exit()
-    # initialize the model
-    ensure_cds_loaded()
+    if initial_conditions == "cds":
+        ensure_cds_loaded()
     model = Skyrim(model_name, ic_source=initial_conditions)
     pred, output_paths = model.predict(
         date=date,
@@ -127,6 +127,7 @@ def main(
                 filter_vars,
             ],
             check=True,
+            cwd=str(Path(__file__).parent.parent),
         )
 
     return run_forecast(

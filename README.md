@@ -28,29 +28,41 @@ Our goal is to make these models accessible by providing a well maintained infra
 
 ## Installation
 
-Clone the repo, set an env (either conda or venv) and then run `pip install .`.
+Clone the repo, set an env (either conda or venv) and then run
 
-This will install bare-minimum to run your first forecast.
+```bash
+pip install .
+```
+
+Depending on your use-case (i.e. AWS storage needs or CDS initial conditions), you may need to fill in a `.env` by `cp .env.example .env`.
 
 ## Run your first forecast
 
-You will need a [modal](https://modal.com/) key to run your forecast as we are loading large weather models (it requires NVIDIA GPU with at least 24GB memory). Modal comes with $30 free credits and a single forecast costs about 2 cents. Alternatively, see the [bare metal](#bare-metal) or [vast.ai](#vastai-setup) setup to run on your own GPUs.
+Skyrim currently supports either running on on [modal](#forecasting-using-modal), on a container –for instance [vast.ai](#vastai-setup) or [bare metal](#bare-metal)(you will need an NVIDIA GPU with at least 24GB and installation can be long).
+
+Modal is the fastest option, it will run forecasts "serverless" so you don't have to worry about the infrastructure.
 
 ### Forecasting using Modal:
 
-If you are running on modal then run:
+You will need a [modal](https://modal.com/) key. Run `modal setup` and set it up (<1 min).
+
+Modal comes with $30 free credits and a single forecast costs about 2 cents as of May 2024.
+
+Once you are all good to go, then run:
 
 ```bash
 modal run skyrim/modal/forecast.py
 ```
 
-This by default uses `pangu` model to forecast for the next 6 hours, starting from yesterday. It gets initial conditions from NOAA GFS and writes the forecast to a modal volume. You can explore the forecast by running a notebook (without GPU) in modal:
+This by default uses `pangu` model to forecast for the next 6 hours, starting from yesterday. It gets initial conditions from [NOAA GFS](https://en.wikipedia.org/wiki/Global_Forecast_System) and writes the forecast to a modal volume. You can choose different dates and weather models as shown in [here](#run-forecasts-with-different-models-initial-conditions-dates).
+
+After you have your forecast, you can explore it by running a notebook (without GPU, so cheap) in modal:
 
 ```bash
-modal run skyrim/modal/forecast.py:run_analysis
+modal run skyrim/modal/forecast.py::run_analysis
 ```
 
-The forecast will be at `/skyrim/outputs/` volume that you can access from the jupyter notebook.
+This will output a jupyter notebook link that you can follow and access the forecast. For instance, to read the forecast you can run from the notebook the following:
 
 ```
 import xarray as xr
@@ -63,23 +75,13 @@ Once you are done, best is to delete the volume as a daily forecast is about 2GB
 modal volume rm forecasts /[model_name] -r
 ```
 
-If you don't want to use modal volume, and want to aggregate results in cloud, we currently support s3 buckets. You just have to run:
+If you don't want to use modal volume, and want to aggregate results in a bucket (currently only s3), you just have to run:
 
 ```bash
 modal run skyrim/modal/forecast.py --output_dir s3://skyrim-dev
 ```
 
 where `skyrim-dev` is the bucket that you want to aggregate the forecasts. By default, `zarr` format is used to store in AWS/GCP so you can read and move only the parts of the forecasts that you need.
-
-Say interested in wind at 37.0344° N, 27.4305 E to see if we can kite. If we are interested in wind speed, we need to pull wind vectors at about surface level, these are u10m and v10m [components](http://colaweb.gmu.edu/dev/clim301/lectures/wind/wind-uv) of wind. Here is how you do it:
-
-```python
-import xarray as xr
-import pandas as pd
-zarr_store_path = "s3://skyrim-dev/[forecast_id]"
-forecast = xr.open_dataset(zarr_store_path, engine='zarr') # reads the metadata
-df = forecast.sel(lat=37.0344, lon=27.4305, channel=['u10m', 'v10m']).to_pandas()
-```
 
 ### Forecasting with your own GPUs:
 
@@ -90,6 +92,8 @@ If you are running on your own GPUs, installed either via [bare metal](#bare-met
 or you can pass in options as such:
 
 `forecast -m graphcast --lead_time 24 --initial_conditions cds --date 20240330`
+
+See [examples](#examples) section for more.✌️
 
 #### Bare metal
 
@@ -102,11 +106,13 @@ conda activate skyenv
 ./build.sh
 ```
 
+Note: Because we will be building from scratch this can take long (we need to install pytorch extensions through NVIDIA Apex package).
+
 #### vast.ai setup
 
 1. Find a machine you like RTX3090 or above with at least 24GB memory. Make sure you have good bandwith (+500MB/s).
 2. Select the instance template from [here](https://cloud.vast.ai/?ref_id=128656&template_id=1883215a8487ec6ea9ad68a7cdb38c5e).
-3. Then clone the repo and `pip install -e . && pip install -r requirements.txt`
+3. Then clone the repo and `pip install . && pip install -r requirements.txt`
 
 ## Run forecasts with different models, initial conditions, dates
 
@@ -114,11 +120,13 @@ For each run, you will first pull the initial conditions of your interest (most 
 
 If you are using CDS initial conditions, then you will need a [CDS](https://cds.climate.copernicus.eu/user/login?destination=%2Fcdsapp%23!%2Fdataset%2Freanalysis-era5-single-levels) API key in your `.env` –`cp .env.example` and paste.
 
-### Examples
+## Examples
 
 All examples are from local setup, but you can run them as it is if you just change `forecast` to `modal run skyrim/modal/forecast.py` and also make snake case kebab-case -i.e. `model_name` to `model-name`.
 
-Example 1: Forecast using `graphcast` model, with ERA5 initial conditions, starting from 2024-04-30T00:00:00 and with a lead time of a week (forecast for the next week, i.e. 168 hours):
+### Example 1: Pick models, initial conditions, lead times
+
+Forecast using `graphcast` model, with ERA5 initial conditions, starting from 2024-04-30T00:00:00 and with a lead time of a week (forecast for the next week, i.e. 168 hours):
 
 ```bash
 forecast --model_name graphcast --initial_conditions cds --date 20240403 -output_dir s3://skyrim-dev --lead_time 168
@@ -127,12 +135,32 @@ forecast --model_name graphcast --initial_conditions cds --date 20240403 -output
 or in modal:
 
 ```bash
-modal run skyrim/modal/forecast.py --model-name graphcast --initial-conditions cds --date 20240403 -output-dir s3://skyrim-dev --lead-time 168
+modal run skyrim/modal/forecast.py --model-name graphcast --initial-conditions cds --date 20240403 --output-dir s3://skyrim-dev --lead-time 168
 ```
+
+### Example 2: Store in AWS and then read only what you need
+
+Say you re interested in wind at 37.0344° N, 27.4305 E to see if we can kite tomorrow. If we need wind speed, we need to pull wind vectors at about surface level, these are u10m and v10m [components](http://colaweb.gmu.edu/dev/clim301/lectures/wind/wind-uv) of wind. Here is how you go about it:
+
+```bash
+modal run skyrim/modal/forecast.py --output-dir s3://[your_bucket]/[optional_path]  --lead-time 24
+```
+
+Then you can read the forecast as below:
+
+```python
+import xarray as xr
+import pandas as pd
+zarr_store_path = "s3://[your_bucket]/[forecast_id]"
+forecast = xr.open_dataset(zarr_store_path, engine='zarr') # reads the metadata
+df = forecast.sel(lat=37.0344, lon=27.4305, channel=['u10m', 'v10m']).to_pandas()
+```
+
+Normally each day is about 2GB but using zarr_store you will only fetch what you need.✌️
 
 ## Supported initial conditions and caveats
 
-1. GFS
+1. NOAA GFS
 2. ECMWF IFS
 3. ERA5 Re-analysis Dataset
 

@@ -7,14 +7,14 @@ from datetime import datetime, timedelta
 from loguru import logger
 
 load_dotenv()
-CDSAPI_KEY = os.getenv("CDSAPI_KEY")
-CDSAPI_URL = os.getenv("CDSAPI_URL")
-APP_NAME = "skyrim-dev-forecast"
-VOLUME_PATH = "/skyrim/outputs"
+CDSAPI_KEY = os.getenv("CDSAPI_KEY", "")
+CDSAPI_URL = os.getenv("CDSAPI_URL", "")
 MODAL_ENV = os.getenv("MODAL_ENV", "prod")
+APP_NAME = f"skyrim-forecast-{MODAL_ENV}"
+VOLUME_PATH = "/skyrim/outputs"
 
 if not CDSAPI_KEY or not CDSAPI_URL:
-    raise Exception("Missing credentials for CDS")
+    logger.warning("CDS initial conditions disabled, environment not set.")
 
 yesterday = (datetime.now() - timedelta(days=1)).date().isoformat().replace("-", "")
 
@@ -59,7 +59,7 @@ def run_inference(*args, **kwargs):
 
 analysis_image = (
     Image.debian_slim()
-    .pip_install("python-dotenv", "jupyterlab")
+    .pip_install("python-dotenv", "jupyterlab", "loguru")
     .env(
         {
             "CDSAPI_KEY": CDSAPI_KEY,
