@@ -115,7 +115,7 @@ Currently supported models are:
 - [x] [Pangu](https://arxiv.org/abs/2211.02556)
 - [x] [Fourcastnet](https://arxiv.org/abs/2202.11214) (v1 & v2)
 - [x] [DLWP](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020MS002109)
-- [x] [Fuxi](https://www.nature.com/articles/s41612-023-00512-1)
+- [ ] [Fuxi](https://www.nature.com/articles/s41612-023-00512-1)
 - [ ] [MetNet-3](https://arxiv.org/abs/2306.06079)
 
 ### License
