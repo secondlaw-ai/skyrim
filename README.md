@@ -10,19 +10,27 @@
 </h1>
 <p align="center">
 
-🌎 Best-in-class weather forecasting for all.
+🔥 Run state-of-the-art large weather models in less than 2 minutes.
 
-Run masssive ensembles, simulations and fine-tuned models on top of state-of-the-art foundational weather models.
+🌪️ Ensemble and fine-tune to push the limits on forecasting.
+
+🌎 Simulate extreme weather events!
 
 </p>
 
 # Getting Started
 
-Skyrim allows you to run any large weather model with a consumer grade GPU. Until very recently, weather forecasts were run in 100K+ CPU HPC clusters, solving massive numerical models. Within last 2 years, open-source foundation models trained on weather simulation datasets surpassed the skill level of these numerical models. Our goal is to make these models accessible by providing a well maintained infrastructure.
+Skyrim allows you to run any large weather model with a consumer grade GPU.
+
+Until very recently, weather forecasts were run in 100K+ CPU HPC clusters, solving massive numerical models. Within last 2 years, open-source foundation models trained on weather simulation datasets surpassed the skill level of these numerical models.
+
+Our goal is to make these models accessible by providing a well maintained infrastructure.
 
 ## Installation
 
-`pip install skyrim`
+Clone the repo, set an env (either conda or venv) and then run `pip install .`.
+
+This will install bare-minimum to run your first forecast.
 
 ## Run your first forecast
 
@@ -31,9 +39,9 @@ You will need a [modal](https://modal.com/) key to run your forecast as we are l
 ### Forecasting using Modal:
 
 If you are running on modal then run:
-`modal run modal/forecast.py:run_inference`
+`modal run modal/forecast.py`
 
-This by default uses `pangu` model to forecast for the next 6 hours, starting from yesterday. It gets initial conditions from ECMWF IFS and writes the forecast to a modal volume. You can explore the forecast by running a notebook (without GPU) in modal:
+This by default uses `pangu` model to forecast for the next 6 hours, starting from yesterday. It gets initial conditions from NOAA GFS and writes the forecast to a modal volume. You can explore the forecast by running a notebook (without GPU) in modal:
 
 `modal run modal/forecast.py:run_analysis`
 
@@ -49,7 +57,7 @@ Once you are done, best is to delete the volume as a daily forecast is about 2GB
 
 If you don't want to use modal volume, and want to aggregate results in cloud, we currently support s3 buckets. You just have to run:
 
-`modal run modal/forecast.py::run_inference -o s3://skyrim-dev` where `skyrim-dev` is the bucket that you want to aggregate the forecasts. By default, `zarr` format is used to store in AWS/GCP so you can read and move only the parts of the forecasts that you need.
+`modal run modal/forecast.py --output_dir s3://skyrim-dev` where `skyrim-dev` is the bucket that you want to aggregate the forecasts. By default, `zarr` format is used to store in AWS/GCP so you can read and move only the parts of the forecasts that you need.
 
 Say interested in wind at 37.0344° N, 27.4305 E to see if we can kite. If we are interested in wind speed, we need to pull wind vectors at about surface level, these are u10m and v10m [components](http://colaweb.gmu.edu/dev/clim301/lectures/wind/wind-uv) of wind. Here is how you do it:
 
@@ -63,8 +71,13 @@ df = forecast.sel(lat=37.0344, lon=27.4305, channel=['u10m', 'v10m']).to_pandas(
 
 ### Forecasting with your own GPUs:
 
-Or if you are running on your own GPUs, installed either via [bare metal](#bare-metal) or via [vast.ai](#vast-ai-setup) then you can run:
+If you are running on your own GPUs, installed either via [bare metal](#bare-metal) or via [vast.ai](#vast-ai-setup) then you can just run:
+
 `forecast`
+
+or you can pass in options as such:
+
+`forecast -m graphcast --lead_time 24 --initial_conditions cds --date 20240330`
 
 #### Bare metal
 
@@ -139,6 +152,10 @@ For detailed information regarding licensing, please refer to the license detail
 - [ ] model quantization and its effect on model efficiency and accuracy.
 
 This README will be updated regularly to reflect the progress and integration of new models or features into the library. It serves as a guide for internal development efforts and aids in prioritizing tasks and milestones.
+
+## Development
+
+All in [here](./CONTRIBUTING.md) ✌️
 
 ## Acknowledgements
 

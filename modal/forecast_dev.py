@@ -107,7 +107,7 @@ def main(
     time: str = "0000",
     lead_time: int = 6,
     list_models: bool = False,
-    initial_conditions: str = "ifs",
+    initial_conditions: str = "gfs",
     output_dir: str = VOLUME_PATH,
     filter_vars: str = "",
 ):

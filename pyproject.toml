@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Skyrim"
-version = "0.1.0"
+version = "0.0.0"
 description = "AI weather models united."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -41,7 +41,16 @@ forecast = "skyrim.forecast:main"
 include = ["skyrim", "skyrim.*"]
 
 [project.optional-dependencies]
-dev = ["black", "ruff", "pytest", "tox"]
+dev = [
+  "black",
+  "ruff",
+  "pytest",
+  "tox",
+  "bumpver",
+  'coverage',
+  "twine",
+  "build",
+]
 
 [project.urls]
 "Homepage" = "https://github.com/secondlaw-ai/skyrim"
@@ -81,7 +90,7 @@ concurrency = ["multiprocessing", "thread"]
 source = ["skyrim"]
 
 [tool.coverage.xml]
-output = "e2mip.coverage.xml"
+output = "skyrim.coverage.xml"
 
 [tool.coverage.report]
 exclude_lines = ["pragma: no cover"]

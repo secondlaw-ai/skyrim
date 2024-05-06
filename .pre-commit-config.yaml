@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.3
+    hooks:
+      - id: ruff
+        types_or: [python, pyi]
+        args: [--fix]
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 24.4.2
+    hooks:
+      - id: black
+        language_version: python3.10
+  - repo: local
+    hooks:
+      - id: unit-test
+        name: unit-test
+        entry: pytest tests --ignore=tests/integration
+        language: system
+        pass_filenames: false
+        always_run: true
