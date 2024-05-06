@@ -91,9 +91,8 @@ def run_forecast(
 @click.option(
     "--modal",
     "-mo",
-    type=bool,
-    default=False,
-    help="If set true, then will run on modal.",
+    is_flag=True,
+    help="If set, will run on modal.",
 )
 def main(
     model_name: str,
@@ -111,7 +110,7 @@ def main(
             [
                 "modal",
                 "run",
-                "remote/forecast.py",
+                "skyrim/modal/forecast.py",
                 "--model-name",
                 model_name,
                 "--date",

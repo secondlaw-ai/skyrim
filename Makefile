@@ -1,7 +1,7 @@
 .PHONY: build install install-core lint test-publish publish clean format test test-unit test-integration
 
 build:
-	pip install -e . && rm -rf ./dist/** && python -m build
+	rm -rf ./dist/** *.egg-info && pip install -e . &&  python -m build
 install:
 	pip install -e '.[dev]'
 install-core:

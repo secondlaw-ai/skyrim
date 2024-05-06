@@ -41,13 +41,13 @@ You will need a [modal](https://modal.com/) key to run your forecast as we are l
 If you are running on modal then run:
 
 ```bash
-modal run remote/forecast.py
+modal run skyrim/modal/forecast.py
 ```
 
 This by default uses `pangu` model to forecast for the next 6 hours, starting from yesterday. It gets initial conditions from NOAA GFS and writes the forecast to a modal volume. You can explore the forecast by running a notebook (without GPU) in modal:
 
 ```bash
-modal run remote/forecast.py:run_analysis
+modal run skyrim/modal/forecast.py:run_analysis
 ```
 
 The forecast will be at `/skyrim/outputs/` volume that you can access from the jupyter notebook.
@@ -66,7 +66,7 @@ modal volume rm forecasts /[model_name] -r
 If you don't want to use modal volume, and want to aggregate results in cloud, we currently support s3 buckets. You just have to run:
 
 ```bash
-modal run remote/forecast.py --output_dir s3://skyrim-dev
+modal run skyrim/modal/forecast.py --output_dir s3://skyrim-dev
 ```
 
 where `skyrim-dev` is the bucket that you want to aggregate the forecasts. By default, `zarr` format is used to store in AWS/GCP so you can read and move only the parts of the forecasts that you need.
@@ -116,7 +116,7 @@ If you are using CDS initial conditions, then you will need a [CDS](https://cds.
 
 ### Examples
 
-All examples are from local setup, but you can run them as it is if you just change `forecast` to `modal run remote/forecast.py` and also make snake case kebab-case -i.e. `model_name` to `model-name`.
+All examples are from local setup, but you can run them as it is if you just change `forecast` to `modal run skyrim/modal/forecast.py` and also make snake case kebab-case -i.e. `model_name` to `model-name`.
 
 Example 1: Forecast using `graphcast` model, with ERA5 initial conditions, starting from 2024-04-30T00:00:00 and with a lead time of a week (forecast for the next week, i.e. 168 hours):
 
@@ -127,7 +127,7 @@ forecast --model_name graphcast --initial_conditions cds --date 20240403 -output
 or in modal:
 
 ```bash
-modal run remote/forecast.py --model-name graphcast --initial-conditions cds --date 20240403 -output-dir s3://skyrim-dev --lead-time 168
+modal run skyrim/modal/forecast.py --model-name graphcast --initial-conditions cds --date 20240403 -output-dir s3://skyrim-dev --lead-time 168
 ```
 
 ## Supported initial conditions and caveats

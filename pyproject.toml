@@ -39,6 +39,7 @@ forecast = "skyrim.forecast:main"
 
 [tool.setuptools.packages.find]
 include = ["skyrim", "skyrim.*", "remote"]
+exclude = ["docs*", "tests*", "notebooks*", "assets*", "outputs*"]
 
 [project.optional-dependencies]
 dev = [

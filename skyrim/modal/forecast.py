@@ -11,6 +11,7 @@ CDSAPI_KEY = os.getenv("CDSAPI_KEY")
 CDSAPI_URL = os.getenv("CDSAPI_URL")
 APP_NAME = "skyrim-dev-forecast"
 VOLUME_PATH = "/skyrim/outputs"
+MODAL_ENV = os.getenv("MODAL_ENV", "prod")
 
 if not CDSAPI_KEY or not CDSAPI_URL:
     raise Exception("Missing credentials for CDS")
@@ -19,7 +20,10 @@ yesterday = (datetime.now() - timedelta(days=1)).date().isoformat().replace("-",
 
 image = (
     Image.from_registry("nvcr.io/nvidia/modulus/modulus:23.11")
-    .run_commands("git clone https://github.com/secondlaw-ai/skyrim")
+    .run_commands(
+        "git clone https://github.com/secondlaw-ai/skyrim",
+        force_build=(MODAL_ENV != "prod"),
+    )
     .workdir("/skyrim")
     .run_commands("pip install .")
     .run_commands("pip install -r requirements.txt")
