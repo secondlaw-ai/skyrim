@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 from io import BytesIO
 
 AVAILABLE_MODELS = ["pangu", "fourcastnet", "fourcastnet_v2", "graphcast", "dlwp"]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def generate_forecast_id(length=10):
@@ -50,7 +51,7 @@ def generate_filename(
     )
 
 
-OUTPUT_DIR = str(Path.cwd() / "outputs")
+OUTPUT_DIR = str(PROJECT_ROOT / "outputs")
 
 if not Path(OUTPUT_DIR).exists():
     Path(OUTPUT_DIR).mkdir()

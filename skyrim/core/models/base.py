@@ -8,6 +8,7 @@ from earth2mip import schema
 from ...libs.ic import get_data_source
 from ...common import generate_forecast_id, save_forecast
 
+
 class GlobalModel:
     def __init__(
         self, model_name: str, ic_source: Literal["cds", "gfs", "ifs"] = "cds"
@@ -93,7 +94,7 @@ class GlobalModel:
                 start_time, source = pred_time, "file"
                 output_paths.append(output_path)
             logger.success(f"Rollout step {n+1}/{n_steps} completed")
-        return pred, list(set(output_paths))
+        return pred, output_paths
 
 
 class GlobalPrediction:

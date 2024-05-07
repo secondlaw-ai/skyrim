@@ -1,4 +1,5 @@
 import xarray as xr
+import numpy as np
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -12,13 +13,12 @@ from loguru import logger
 
 ProjectionType = Literal["Orthographic", "PlateCarree", "Mollweide", "Robinson"]
 
-
 def generate_rollout_gif(
     output_paths: list[str | Path],
-    variable_name: str,
+    channel: str,
     output_dir: str | Path,
     cmap: str = "coolwarm",
-    projection: ProjectionType = "Orthographic",
+    projection: str = "Orthographic",
 ):
     """
     Creates a GIF from a list of NetCDF files using xarray and Cartopy for plotting.
@@ -26,44 +26,52 @@ def generate_rollout_gif(
 
     Parameters:
     - output_paths: List of paths to the output NetCDF files.
-    - variable_name: Name of the variable to plot (e.g., 't2m').
-    - output_dir: directory path where the GIF should be saved.
+    - channel: Name of the data channel to plot (e.g., 't2m').
+    - output_dir: Directory path where the GIF should be saved.
     - cmap: Colormap to use for the plots.
-    - projection (ProjectionType): The Cartopy projection to use for plotting.
+    - projection: The Cartopy projection to use for plotting.
 
     # Example usage:
     generate_rollout_gif(output_paths = output_paths,
-                               variable_name='t2m',
-                               gif_path='output_animation_ortho.gif',
-                               projection='Orthographic')
-
+                         channel='t2m',
+                         output_dir='.',
+                         projection='Orthographic')
     """
 
-    # Extract the model name, start time, and end time from file names
+    # Initialize lists to store all data for computing global statistics
+    all_data = []
+
+    # Load data and append to list
+    for file_path in output_paths:
+        with xr.open_dataarray(file_path) as ds:
+            data = ds.sel(channel=channel).isel(time=-1).squeeze()
+            all_data.append(data.values.flatten())
+
+    # Concatenate all data into a single array and compute global statistics
+    all_data = np.concatenate(all_data)
+    mean_val = np.mean(all_data)
+    std_val = np.std(all_data)
+    global_min = mean_val - 3 * std_val
+    global_max = mean_val + 3 * std_val
+
+    # create gif_path including model name and simulation time span
     model_name = os.path.basename(output_paths[0]).split("__")[0]
     start_time = os.path.basename(output_paths[0]).split("__")[2]
     end_time = os.path.basename(output_paths[-1]).split("__")[3].replace(".nc", "")
-
-    # create gif_path including model name and simulation time span
-    gif_path = Path(output_dir) / (
-        f"{model_name}_{start_time}_to_{end_time}_{variable_name}.gif"
+    gif_path = (
+        Path(output_dir) / f"{model_name}_{start_time}_to_{end_time}_{channel}.gif"
     )
-    logger.debug(f"GIF path is set to: {gif_path}")
 
     # Check if the gif already exists
     if gif_path.exists():
-        logger.info(f"GIF already exists: {gif_path}")
+        print(f"GIF already exists: {gif_path}")
         return gif_path
 
     images = []
     for file_path in tqdm(output_paths, desc="Generating GIF Frames"):
-        # Load the dataset
         ds = xr.open_dataarray(file_path)
+        data = ds.sel(channel=channel).isel(time=-1).squeeze()
 
-        # Extract the variable at the last time step and squeeze out single dimensions
-        data = ds.sel(channel=variable_name).isel(time=-1).squeeze()
-
-        # Create a figure and set up the geographic projection based on the input parameter
         projection_class = getattr(ccrs, projection)
         plt.figure(figsize=(10, 10))
         ax = plt.axes(
@@ -72,42 +80,27 @@ def generate_rollout_gif(
         ax.add_feature(cfeature.COASTLINE)
         ax.add_feature(cfeature.BORDERS, linestyle=":")
 
-        # Set manual limits if needed (particularly useful for specific variables like 't2m')
-        vmin = data.min().values if variable_name != "t2m" else 220
-        vmax = data.max().values if variable_name != "t2m" else 320
-
-        # Plot the data using the specified colormap and no colorbar
         img = data.plot(
             ax=ax,
             transform=ccrs.PlateCarree(),
             cmap=cmap,
             add_colorbar=False,
-            vmin=vmin,
-            vmax=vmax,
+            vmin=global_min,
+            vmax=global_max,
         )
-
-        # Add a colorbar manually with fixed location and size
         plt.colorbar(
             img, ax=ax, orientation="vertical", pad=0.02, aspect=50, extend="both"
         )
-        ax.set_title(f"{variable_name.upper()} at Time Step: {ds.time[-1].values}")
+        ax.set_title(f"{channel.upper()} at Time Step: {ds.time[-1].values}")
 
-        # Save the figure to a temporary PNG file with a tight layout
         temp_png_path = f"temp_{os.path.basename(file_path)}.png"
-        plt.savefig(temp_png_path, bbox_inches="tight", dpi=300)  # High resolution
+        plt.savefig(temp_png_path, bbox_inches="tight", dpi=300)
         plt.close()
 
-        # Load the image and append to the list
         images.append(imageio.imread(temp_png_path))
-
-        # Remove the temporary file
         os.remove(temp_png_path)
 
-    # Create the GIF
-    imageio.mimsave(
-        gif_path, images, duration=1, loop=0
-    )  # duration controls the display time for each frame
-
+    imageio.mimsave(gif_path, images, duration=1, loop=0)
     print(f"GIF saved to {gif_path}")
     return gif_path
 
@@ -129,10 +122,10 @@ def visualize_rollout(
     - projection: The Cartopy projection to use for plotting.
     """
     gif_paths = []
-    for variable_name in channels:
+    for channel in channels:
         gif_path = generate_rollout_gif(
             output_paths=output_paths,
-            variable_name=variable_name,
+            channel=channel,
             output_dir=output_dir,
             cmap=cmap,
             projection=projection,

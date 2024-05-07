@@ -1,7 +1,7 @@
 import pandas as pd
 from loguru import logger
 import matplotlib.pyplot as plt
-from skyrim.models.base import (
+from skyrim.core.models.base import (
     GlobalPredictionRollout,
 )
 
