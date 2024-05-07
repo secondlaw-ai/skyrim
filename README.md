@@ -22,6 +22,7 @@
 
 Skyrim allows you to run any large weather model with a consumer grade GPU.
 
+
 Until very recently, weather forecasts were run in 100K+ CPU HPC clusters, solving massive numerical models. Within last 2 years, open-source foundation models trained on weather simulation datasets surpassed the skill level of these numerical models.
 
 Our goal is to make these models accessible by providing a well maintained infrastructure.
@@ -31,18 +32,20 @@ Our goal is to make these models accessible by providing a well maintained infra
 Clone the repo, set an env (either conda or venv) and then run
 
 ```bash
+git clone https://github.com/your-repo/skyrim.git
+cd skyrim
 pip install .
 ```
 
 Depending on your use-case (i.e. AWS storage needs or CDS initial conditions), you may need to fill in a `.env` by `cp .env.example .env`.
 
-## Run your first forecast
+## Running Your First Forecast
 
 Skyrim currently supports either running on on [modal](#forecasting-using-modal), on a container –for instance [vast.ai](#vastai-setup) or [bare metal](#bare-metal)(you will need an NVIDIA GPU with at least 24GB and installation can be long).
 
 Modal is the fastest option, it will run forecasts "serverless" so you don't have to worry about the infrastructure.
 
-### Forecasting using Modal:
+### Forecasting using Modal (Recommended):
 
 You will need a [modal](https://modal.com/) key. Run `modal setup` and set it up (<1 min).
 
@@ -106,7 +109,7 @@ See [examples](#examples) section for more.✌️
 #### Bare metal
 
 1. You will need a NVIDIA GPU with at least 16GB memory, ideally 24GB. We are working on quantization as well so that in the future it would be possible to run simulations with much less compute. Have an environment set with Python +3.10, Pytorch 2.2.2 and CUDA 11.8. Or if easier start with the docker image: `pytorch/pytorch:2.2.2-cuda11.8-cudnn8-devel`.
-2. Install conda (miniconda for instance). Then run in that environment:
+2. Install conda ([miniconda](https://docs.anaconda.com/free/miniconda/miniconda-install/) for instance). Then run in that environment:
 
 ```bash
 conda create -y -n skyenv python=3.10

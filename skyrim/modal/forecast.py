@@ -112,23 +112,30 @@ def main(
     filter_vars: str = "",
 ):
     """
-    args:
-    date: str
-        Date in YYYYMMDD format
-    model: str
-        Name of the model to run inference
-    lead_time: int
-        Lead time in hours
-    Run inference for the given model, lead_time and date
-    Example: `modal run modal/forecast.py --model pangu --lead-time 12 --date 20240420`
-    will run a forecast for 2024-04-21 starting from the initial conditions
-    retrieved at 2024-04-21 00:00:00 in ERA5 CDS reanalysis data.
+    Run weather forecast inference using specified model and initial conditions.
 
-    Next day forecast is about 2GB of data. See https://modal.com/pricing for storage costs.
-    You can immediately start analysing the forecast by running `modal run modal/forecast.py:run_analysis`
-    This will start a JupyterLab server in a modal container that you can access with the provided URL.
-    Alternatively, if you want to work with the data locally, you can run `modal volume get forecasts /skyrim/outputs/[model_name]/[filename] .[your_local_path]`
-    Once you are done with the analysis, you can delete the volume with `modal volume rm forecasts /[model_name] -r`
+    Parameters:
+        model_name (str): Name of the model for inference. Default is 'pangu'.
+        date (str): Date for the forecast start in YYYYMMDD format. Defaults to yesterday.
+        time (str): Time for the forecast start in HHMM format. Default is '0000'.
+        lead_time (int): Forecast lead time in hours. Default is 6.
+        list_models (bool): If True, lists available models. Default is False.
+        initial_conditions (str): Source of initial conditions (e.g., 'gfs'). Default is 'gfs'.
+        output_dir (str): Directory for saving output. Default is VOLUME_PATH.
+        filter_vars (str): Variables to filter in output. Defaults to an empty string.
+
+    Example:
+        Run a forecast for 2024-04-20 with a 12-hour lead time using the Pangu model:
+        `modal run modal/forecast.py --model pangu --lead-time 12 --date 20240420`
+
+    Note:
+        Forecasts typically generate about 2GB of data. Storage costs can be checked at https://modal.com/pricing.
+        To analyze the forecast data interactively, execute:
+        `modal run modal/forecast.py:run_analysis`
+        This command starts a JupyterLab server in a Modal container. For local data analysis, use:
+        `modal volume get forecasts /skyrim/outputs/[model_name]/[filename] .[your_local_path]`
+        Clean up storage with:
+        `modal volume rm forecasts /[model_name] -r`
     """
     # model_name: str = 'pangu', date: str = yesterday, time: str = "0000", lead_time: int = 6, list_models: bool = False, initial_conditions: str = "ifs", output_dir: str = '/skyrim/outputs', filter_vars: str = ''
     run_inference.remote(
