@@ -137,7 +137,26 @@ If you are using CDS initial conditions, then you will need a [CDS](https://cds.
 
 All examples can be run using `forecast` or `modal run skyrim/modal/forecast.py`. You just have to make snake case options kebab-case -i.e. `model_name` to `model-name`.
 
-### Example 1: Pick models, initial conditions, lead times
+### Example 1: Get predictions in Python
+Assuming you have a local gpu set up ready to roll:
+```python
+from skyrim.core import Skyrim
+
+model = Skyrim("pangu")
+final_pred, pred_paths = model.predict(
+    date="20240501", # format: YYYYMMDD, start date of the forecast
+    time="0000",  # format: HHMM, start time of the forecast
+    lead_time=12, # in hours
+    save=True,
+)
+akyaka_coords = {"lat": 37.0557, "lon": 28.3242}
+wind_speed = final_pred.wind_speed(**akyaka_coords) * 1.94384 # m/s to knots
+print(f"Wind speed at Akyaka: {wind_speed:.2f} knots")
+
+```
+
+
+### Example 2: Pick models, initial conditions, lead times
 
 Forecast using `graphcast` model, with ERA5 initial conditions, starting from 2024-04-30T00:00:00 and with a lead time of a week (forecast for the next week, i.e. 168 hours):
 
@@ -151,7 +170,7 @@ or in modal:
 modal run skyrim/modal/forecast.py --model-name graphcast --initial-conditions cds --date 20240403 --output-dir s3://skyrim-dev --lead-time 168
 ```
 
-### Example 2: Store in AWS and then read only what you need
+### Example 3: Store in AWS and then read only what you need
 
 Say you re interested in wind at 37.0344° N, 27.4305 E to see if we can kite tomorrow. If we need wind speed, we need to pull wind vectors at about surface level, these are u10m and v10m [components](http://colaweb.gmu.edu/dev/clim301/lectures/wind/wind-uv) of wind. Here is how you go about it:
 
