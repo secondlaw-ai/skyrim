@@ -100,13 +100,37 @@ See [examples](#examples) section for more.✌️
 
 ### Forecasting with your own GPUs:
 
-If you are running on your own GPUs, installed either via [bare metal](#bare-metal) or via containers such as [vast.ai](#vast-ai-setup) then you can just run:
+If you are running on your own GPUs, installed either via [bare metal](#bare-metal) or via containers such as [vast.ai](#vast-ai-setup) then you can directly get forecasts as such:
 
-`forecast`
+```python
+from skyrim.core import Skyrim
 
-or you can pass in options as such:
+model = Skyrim("pangu")
+final_pred, pred_paths = model.predict(
+    date="20240507", # format: YYYYMMDD, start date of the forecast
+    time="0000",  # format: HHMM, start time of the forecast
+    lead_time=24 * 7, # in hours, next week
+    save=True,
+)
+```
 
-`forecast -m graphcast --lead_time 24 --initial_conditions cds --date 20240330`
+To visualise the forecast:
+
+```python
+from skyrim.libs.plotting import visualize_rollout
+visualize_rollout(output_paths=pred_paths, channels=["u10m", "v10m"], output_dir=".")
+```
+
+<p align="center">
+  <img src="./notebooks/pangu_20240507_00:00_to_20240514_00:00_u10m.gif" width="30%" />
+  <img src="./notebooks/pangu_20240507_00:00_to_20240514_00:00_v10m.gif" width="30%" /> 
+</p>
+
+or you can still use the command line:
+
+```bash
+forecast -m graphcast --lead_time 24 --initial_conditions cds --date 20240330`
+```
 
 See [examples](#examples) section for more.✌️
 
@@ -137,26 +161,7 @@ If you are using CDS initial conditions, then you will need a [CDS](https://cds.
 
 All examples can be run using `forecast` or `modal run skyrim/modal/forecast.py`. You just have to make snake case options kebab-case -i.e. `model_name` to `model-name`.
 
-### Example 1: Get predictions in Python
-Assuming you have a local gpu set up ready to roll:
-```python
-from skyrim.core import Skyrim
-
-model = Skyrim("pangu")
-final_pred, pred_paths = model.predict(
-    date="20240501", # format: YYYYMMDD, start date of the forecast
-    time="0000",  # format: HHMM, start time of the forecast
-    lead_time=12, # in hours
-    save=True,
-)
-akyaka_coords = {"lat": 37.0557, "lon": 28.3242}
-wind_speed = final_pred.wind_speed(**akyaka_coords) * 1.94384 # m/s to knots
-print(f"Wind speed at Akyaka: {wind_speed:.2f} knots")
-
-```
-
-
-### Example 2: Pick models, initial conditions, lead times
+### Example 1: Pick models, initial conditions, lead times
 
 Forecast using `graphcast` model, with ERA5 initial conditions, starting from 2024-04-30T00:00:00 and with a lead time of a week (forecast for the next week, i.e. 168 hours):
 
@@ -170,7 +175,7 @@ or in modal:
 modal run skyrim/modal/forecast.py --model-name graphcast --initial-conditions cds --date 20240403 --output-dir s3://skyrim-dev --lead-time 168
 ```
 
-### Example 3: Store in AWS and then read only what you need
+### Example 2: Store in AWS and then read only what you need
 
 Say you re interested in wind at 37.0344° N, 27.4305 E to see if we can kite tomorrow. If we need wind speed, we need to pull wind vectors at about surface level, these are u10m and v10m [components](http://colaweb.gmu.edu/dev/clim301/lectures/wind/wind-uv) of wind. Here is how you go about it:
 
@@ -189,6 +194,26 @@ df = forecast.sel(lat=37.0344, lon=27.4305, channel=['u10m', 'v10m']).to_pandas(
 ```
 
 Normally each day is about 2GB but using zarr_store you will only fetch what you need.✌️
+
+### Example 3: Get predictions in Python
+
+Assuming you have a local gpu set up ready to roll:
+
+```python
+from skyrim.core import Skyrim
+
+model = Skyrim("pangu")
+final_pred, pred_paths = model.predict(
+    date="20240501", # format: YYYYMMDD, start date of the forecast
+    time="0000",  # format: HHMM, start time of the forecast
+    lead_time=12, # in hours
+    save=True,
+)
+akyaka_coords = {"lat": 37.0557, "lon": 28.3242}
+wind_speed = final_pred.wind_speed(**akyaka_coords) * 1.94384 # m/s to knots
+print(f"Wind speed at Akyaka: {wind_speed:.2f} knots")
+
+```
 
 ## Supported initial conditions and caveats
 
