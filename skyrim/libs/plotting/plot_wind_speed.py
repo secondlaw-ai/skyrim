@@ -55,7 +55,7 @@ def plot_wind_speed(
         markerfacecolor="blue",
         **kwargs,
     )
-    ax.set_xticklabels(formatted_time, rotation=45, fontsize=8)
+    ax.set_xticklabels(formatted_time, rotation=90, fontsize=8)
     ax.set_ylabel("Wind Speed [m/s]")
     ax.set_xlabel("Date/time")
     ax.grid(True)  # Optionally add grid for better readability

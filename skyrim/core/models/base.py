@@ -213,13 +213,16 @@ class GlobalPrediction:
         self,
         lat: float,
         lon: float,
-        pressure_level: int = 1000,
+        pressure_level: int,
         n_step: int | None = 1,
     ):
         # NOTE: pressure level is in hPa
         # TODO: add functionality to estimate pressure from height
         u, v = self.point_wind_uv(lat, lon, pressure_level, n_step)
         return (u**2 + v**2) ** 0.5
+
+    def surface_wind_speed(self, lat: float, lon: float, n_step: int | None = 1):
+        return self.wind_speed(lat, lon, pressure_level=1000, n_step=n_step)
 
 
 class GlobalPredictionRollout:
@@ -234,10 +237,18 @@ class GlobalPredictionRollout:
         self,
         lat: float,
         lon: float,
-        pressure_level: int = 1000,
+        pressure_level: int,
         n_step: int | None = 1,
     ):
         # NOTE: pressure level is in hPa
         return [
             pred.wind_speed(lat, lon, pressure_level, n_step) for pred in self.rollout
         ]
+
+    def surface_wind_speed(
+        self,
+        lat: float,
+        lon: float,
+        n_step: int | None = 1,
+    ):
+        return self.wind_speed(lat, lon, pressure_level=1000, n_step=n_step)
