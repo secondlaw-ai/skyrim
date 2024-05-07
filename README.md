@@ -20,9 +20,11 @@
 <div>
 <div align="center">
 
+[![Static Badge](https://img.shields.io/badge/Run-On_Modal-green)](https://github.com/secondlaw-ai/skyrim?tab=readme-ov-file#forecasting-using-modal-recommended)
 [![PyPI - Version](https://img.shields.io/pypi/v/skyrim)](https://pypi.org/project/Skyrim/)
 [![Twitter Follow](https://img.shields.io/twitter/follow/secondlaw_ai)](https://twitter.com/secondlaw_ai)
 ![GitHub Repo stars](https://img.shields.io/github/stars/secondlaw-ai/skyrim)
+[![GitHub License](https://img.shields.io/github/license/secondlaw-ai/skyrim)](https://github.com/secondlaw-ai/skyrim/blob/master/LICENSE)
 
 </div>
 </div>
