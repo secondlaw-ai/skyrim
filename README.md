@@ -8,20 +8,28 @@
  <br></br>
 
 </h1>
-<p align="center">
+<div align="center">
 
 🔥 Run state-of-the-art large weather models in less than 2 minutes.
 
-🌪️ Ensemble and fine-tune to push the limits on forecasting.
+🌪️ Ensemble and fine-tune (soon) to push the limits on forecasting.
 
 🌎 Simulate extreme weather events!
 
-</p>
+</div>
+<div>
+<div align="center">
+
+[![PyPI - Version](https://img.shields.io/pypi/v/skyrim)](https://pypi.org/project/Skyrim/)
+[![Twitter Follow](https://img.shields.io/twitter/follow/secondlaw_ai)](https://twitter.com/secondlaw_ai)
+![GitHub Repo stars](https://img.shields.io/github/stars/secondlaw-ai/skyrim)
+
+</div>
+</div>
 
 # Getting Started
 
 Skyrim allows you to run any large weather model with a consumer grade GPU.
-
 
 Until very recently, weather forecasts were run in 100K+ CPU HPC clusters, solving massive numerical models. Within last 2 years, open-source foundation models trained on weather simulation datasets surpassed the skill level of these numerical models.
 
