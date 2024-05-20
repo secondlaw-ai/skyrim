@@ -13,8 +13,18 @@ from urllib.parse import urlparse
 from io import BytesIO
 
 AVAILABLE_MODELS = ["pangu", "fourcastnet", "fourcastnet_v2", "graphcast", "dlwp"]
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
+OUTPUT_DIR = str(Path.cwd() / "outputs")
+
+if not Path(OUTPUT_DIR).exists():
+    Path(OUTPUT_DIR).mkdir()
+    logger.success(f"Created output directory: {OUTPUT_DIR}")
+
+DEFAULT_SAVE_CONFIG = {
+    "output_dir": OUTPUT_DIR,
+    "file_type": "netcdf",
+    "filter_vars": [],
+}
 
 def generate_forecast_id(length=10):
     """
@@ -51,17 +61,6 @@ def generate_filename(
     )
 
 
-OUTPUT_DIR = str(PROJECT_ROOT / "outputs")
-
-if not Path(OUTPUT_DIR).exists():
-    Path(OUTPUT_DIR).mkdir()
-    logger.success(f"Created output directory: {OUTPUT_DIR}")
-
-DEFAULT_SAVE_CONFIG = {
-    "output_dir": OUTPUT_DIR,
-    "file_type": "netcdf",
-    "filter_vars": [],
-}
 
 
 def remote_forecast_exists(path: str):
@@ -79,7 +78,7 @@ def save_forecast(
     model_name: str,
     start_time: datetime,
     pred_time: datetime,
-    source: Literal["cds", "file"] = "cds",
+    source: Literal["cds", "file", "ifs", "gfs"] = "cds",
     config: dict = {},
 ):
     requested_file_type = config.get("file_type")
