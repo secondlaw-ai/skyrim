@@ -3,6 +3,7 @@ import subprocess
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 from pathlib import Path
+from loguru import logger
 from skyrim.common import AVAILABLE_MODELS
 
 yesterday = (datetime.now() - timedelta(days=1)).date().isoformat().replace("-", "")
@@ -35,6 +36,10 @@ def run_forecast(
         exit()
     if initial_conditions == "cds":
         ensure_cds_loaded()
+    logger.debug(
+        f"Starting forecast run with model_name={model_name}, date={date}, time={time}, lead_time={lead_time}, initial_conditions={initial_conditions}, output_dir={output_dir}, filter_vars={filter_vars}"
+    )
+
     model = Skyrim(model_name, ic_source=initial_conditions)
     pred, output_paths = model.predict(
         date=date,

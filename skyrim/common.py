@@ -16,15 +16,12 @@ AVAILABLE_MODELS = ["pangu", "fourcastnet", "fourcastnet_v2", "graphcast", "dlwp
 
 OUTPUT_DIR = str(Path.cwd() / "outputs")
 
-if not Path(OUTPUT_DIR).exists():
-    Path(OUTPUT_DIR).mkdir()
-    logger.success(f"Created output directory: {OUTPUT_DIR}")
-
 DEFAULT_SAVE_CONFIG = {
     "output_dir": OUTPUT_DIR,
     "file_type": "netcdf",
     "filter_vars": [],
 }
+
 
 def generate_forecast_id(length=10):
     """
@@ -59,8 +56,6 @@ def generate_filename(
         + "__"
         + f"{pred_time.strftime('%Y%m%d_%H:%M')}.nc"
     )
-
-
 
 
 def remote_forecast_exists(path: str):

@@ -11,6 +11,7 @@ from botocore import UNSIGNED
 from botocore.client import Config
 from loguru import logger
 from typing import List
+import cfgrib
 from earth2mip.datasets.era5 import METADATA
 from earth2mip.initial_conditions import base
 
@@ -78,31 +79,45 @@ def get(time: datetime.datetime, channels: List[str]):
     root = "s3://ecmwf-forecasts/"
     path = root + _get_filename(time, "0h")
     local_path = download_cached(path)
-    dataset_0h = xarray.open_dataset(local_path, engine="cfgrib")
-    # get t2m and other things from 12 hour forecast initialized 12 hours before
-    # The HRES is only initialized every 12 hours
-    path = root + _get_filename(time - datetime.timedelta(hours=12), "12h")
-    local_path = download_cached(path)
-    forecast_12h = xarray.open_dataset(local_path, engine="cfgrib")
-    # TODO: some of these channels seem to be omitted. Revisit.
+    print(f"Local path: {local_path}")
+
+    # NOTE: cfgrib.open_datasets returns a list of xarray datasets
+    # this is a very hacky workaround, check this out
+    loaded = cfgrib.open_datasets(local_path)
+    if len(loaded) > 1:
+        print(f"Multiple datasets loaded from {loaded}")
+        dataset_0h = xarray.merge(
+            [
+                (
+                    l.drop_vars("heightAboveGround")
+                    if "heightAboveGround" in l.coords
+                    else (
+                        l.drop_vars("depthBelowLandLayer")
+                        if "depthBelowLandLayer" in l.coords
+                        else l
+                    )
+                )
+                for l in loaded
+            ]
+        )
     channel_data = [
         _get_channel(
             c,
-            z=dataset_0h.gh * 9.807,
-            u=dataset_0h.u,
-            v=dataset_0h.v,
             q=dataset_0h.q,  # pangu
             w=dataset_0h.w,  # graphcast
-            u10m=dataset_0h.sel(isobaricInhPa=1000.0).u,
-            v10m=dataset_0h.sel(isobaricInhPa=1000.0).v,
-            u100m=dataset_0h.sel(isobaricInhPa=1000.0).u,
-            v100m=dataset_0h.sel(isobaricInhPa=1000.0).v,
+            u10m=dataset_0h.u10,
+            v10m=dataset_0h.v10,
+            u100m=dataset_0h.u10,
+            v100m=dataset_0h.v10,
             sp=dataset_0h.sp,
-            t2m=forecast_12h.sel(isobaricInhPa=1000.0).t,
-            msl=forecast_12h.msl,
-            tcwv=forecast_12h.tcwv,
+            t2m=dataset_0h.t2m,
+            msl=dataset_0h.msl,
+            tcwv=dataset_0h.tcwv,
             t=dataset_0h.t,
+            u=dataset_0h.u,
+            v=dataset_0h.v,
             r=dataset_0h.r,
+            z=dataset_0h.gh * 9.807,
         )
         for c in channels
     ]
@@ -112,8 +127,8 @@ def get(time: datetime.datetime, channels: List[str]):
         dims=["channel", "lat", "lon"],
         coords={
             "channel": channels,
+            "lat": dataset_0h.latitude.values,  # NOTE: double check this line
             "lon": dataset_0h.longitude.values,
-            "lat": dataset_0h.latitude.values, #NOTE: double check this line
             "time": time,
         },
     )
@@ -134,4 +149,12 @@ class DataSource(base.DataSource):
         return earth2mip.grid.equiangular_lat_lon_grid(721, 1440)
 
     def __getitem__(self, time: datetime.datetime) -> np.ndarray:
-        return get(time, self.channel_names)
+        ds = get(time, self.channel_names)
+        metadata = json.loads(METADATA.read_text())
+        lat = np.array(metadata["coords"]["lat"])
+        lon = np.array(metadata["coords"]["lon"])
+        ds = ds.roll(lon=len(ds.lon) // 2, roll_coords=True)
+        ds["lon"] = ds.lon.where(ds.lon >= 0, ds.lon + 360)
+        assert min(ds.lon) >= 0, min(ds.lon)  # noqa
+        r = ds.interp(lat=lat, lon=lon, kwargs={"fill_value": "extrapolate"})
+        return r
