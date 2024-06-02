@@ -15,7 +15,6 @@ def run_basic_inference(
     x: str | xr.DataArray | None = None,
 ):
     """Run a basic inference"""
-    breakpoint()
     if x is None:
         x = initial_conditions.get_initial_condition_for_model(model, data_source, time)
         logger.info(f"Fetching initial conditions from data source")
