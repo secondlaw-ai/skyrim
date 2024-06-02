@@ -12,6 +12,7 @@ from loguru import logger
 from urllib.parse import urlparse
 from io import BytesIO
 
+
 AVAILABLE_MODELS = ["pangu", "fourcastnet", "fourcastnet_v2", "graphcast", "dlwp"]
 LOCAL_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "skyrim")
 
@@ -153,3 +154,5 @@ def save_forecast(
             raise ValueError(f"Invalid file type. {config['file_type']} not supported.")
     logger.success(f"Results saved to: {output_path}")
     return str(output_path)
+
+

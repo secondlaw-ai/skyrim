@@ -28,7 +28,7 @@ def run_forecast(
 ):
     # for the local inference setup you need core packages imported here:
     from skyrim.core import Skyrim
-    from skyrim.core.utils import ensure_cds_loaded
+    from skyrim.utils import ensure_cds_loaded
 
     if list_models:
         available_models = Skyrim.list_available_models()

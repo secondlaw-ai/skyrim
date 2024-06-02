@@ -8,7 +8,8 @@ import xarray as xr
 import numpy as np
 import ecmwf.opendata
 from tqdm import tqdm
-from ...common import LOCAL_CACHE, save_forecast
+from ...common import LOCAL_CACHE, save_forecast, ensure_ecmwf_loaded
+from ...utils import ensure_ecmwf_loaded
 
 
 # adapted from https://github.com/NVIDIA/earth2studio/blob/main/earth2studio/data/ifs.py
@@ -87,6 +88,7 @@ class IFSModel:
 
         self.assure_channels_exist(channels)
         self.channels = channels
+        ensure_ecmwf_loaded()
 
     def assure_channels_exist(self, channels):
         for channel in channels:
