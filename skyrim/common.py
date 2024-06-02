@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 from io import BytesIO
 
 AVAILABLE_MODELS = ["pangu", "fourcastnet", "fourcastnet_v2", "graphcast", "dlwp"]
+LOCAL_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "skyrim")
 
 OUTPUT_DIR = str(Path.cwd() / "outputs")
 

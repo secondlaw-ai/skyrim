@@ -16,10 +16,10 @@ class GlobalModel:
         clock = time.time()
         self.model_name = model_name
         self.ic_source = ic_source
-        
+
         logger.debug(f"Building {model_name} model...")
         self.model = self.build_model()
-        
+
         logger.debug(f"Building {self.ic_source} data source...")
         self.data_source = self.build_datasource()
         logger.success(f"Initialized {model_name} in {time.time() - clock:.1f} seconds")
