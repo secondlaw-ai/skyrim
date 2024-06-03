@@ -79,13 +79,13 @@ def get(time: datetime.datetime, channels: List[str]):
     root = "s3://ecmwf-forecasts/"
     path = root + _get_filename(time, "0h")
     local_path = download_cached(path)
-    print(f"Local path: {local_path}")
+    logger.debug(f"Local path: {local_path}")
 
     # NOTE: cfgrib.open_datasets returns a list of xarray datasets
     # this is a very hacky workaround, check this out
     loaded = cfgrib.open_datasets(local_path)
     if len(loaded) > 1:
-        print(f"Multiple datasets loaded from {loaded}")
+        logger.debug(f"Multiple datasets loaded from {loaded}")
         dataset_0h = xarray.merge(
             [
                 (

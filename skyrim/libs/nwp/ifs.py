@@ -21,7 +21,7 @@ class IFS_Vocabulary:
 
     @staticmethod
     def build_vocab() -> dict[str, str]:
-        """Create HRRR vocab dictionary"""
+        """Create HRES vocab dictionary"""
         sfc_variables = {
             "u10m": "10u::sfc::",
             "v10m": "10v::sfc::",
