@@ -1,1 +1,1 @@
-from .ifs import IFSModel
+from .ifs import IFSModel, IFS_Vocabulary
