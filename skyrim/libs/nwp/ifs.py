@@ -8,7 +8,7 @@ import xarray as xr
 import numpy as np
 import ecmwf.opendata
 from tqdm import tqdm
-from ...common import LOCAL_CACHE, save_forecast, ensure_ecmwf_loaded
+from ...common import LOCAL_CACHE, save_forecast
 from ...utils import ensure_ecmwf_loaded
 
 
@@ -58,6 +58,9 @@ class IFS_Vocabulary:
         return {**sfc_variables, **prs_variables}
 
     VOCAB = build_vocab()
+    # NOTE:
+    # list(IFS_Vocabulary.VOCAB.keys()).__len__()
+    # >> 87
 
     @classmethod
     def get(cls, channel: str) -> str:
@@ -126,7 +129,7 @@ class IFSModel:
         self,
         date: str,  # YYYMMDD, e.g. 20180101
         time: str,  # HHMM, e.g. 0300, 1400, etc
-        lead_time: int = 6,  # in hours 0-240,
+        lead_time: int = 24,  # in hours 0-240,
         save: bool = False,
         save_config: dict = {},
     ) -> xr.DataArray:
@@ -140,7 +143,7 @@ class IFSModel:
         time : str
             The time in the format HHMM, e.g. 0300, 1400, etc.
         lead_time : int, optional
-            The lead time in hours 0-240, by default 6.
+            The lead time in hours 0-240, by default 24.
         save : bool, optional
             Whether to save the prediction, by default False.
         save_config : dict, optional
@@ -153,7 +156,7 @@ class IFSModel:
         """
         start_time = datetime.datetime.strptime(f"{date} {time}", "%Y%m%d %H%M")
         steps = self._slice_lead_time_to_steps(lead_time, start_time)
-        logger.debug(f"Using steps: {steps}")
+        logger.debug(f"Forecast steps: {steps}")
         darray = self.fetch_ifs_dataarray(self.channels, start_time, steps)
         if save:
             save_forecast(
@@ -234,7 +237,7 @@ class IFSModel:
         self, lead_time: int, start_time: datetime
     ) -> list[int]:
         """
-        Slice the lead time into time steps based on the start time of the forecast.
+        Slice the lead time into forecast time steps based on the start time of the forecast.
 
         Parameters
         ----------

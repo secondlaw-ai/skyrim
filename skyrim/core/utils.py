@@ -14,6 +14,3 @@ def timeit(func):
         return result
 
     return wrapper
-
-
-
