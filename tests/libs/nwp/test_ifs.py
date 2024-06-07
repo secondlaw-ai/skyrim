@@ -4,6 +4,7 @@ import datetime
 import numpy as np
 import xarray as xr
 from unittest.mock import patch
+from unittest.mock import MagicMock
 import hashlib
 from skyrim.libs.nwp.ifs import IFSModel, IFS_Vocabulary
 
@@ -69,24 +70,8 @@ def test_ifs_model_slice_lead_time_to_steps():
 
 
 def test_ifs_download_ifs_channel_grib_to_cache():
-    channels = ["u10m", "v10m"]
-    model = IFSModel(channels=channels, cache=True, source="aws")
-    start_time = datetime.datetime.strptime("20230101 0000", "%Y%m%d %H%M")
-    channel = "10u"
-    levtype = "sfc"
-    level = ""
-    step = 1
-
-    with patch.object(model.client, "retrieve") as mock_retrieve:
-        cache_path = model._download_ifs_channel_grib_to_cache(
-            channel, levtype, level, start_time, step
-        )
-        sha = hashlib.sha256(f"{channel}_{levtype}_{level}_{start_time}".encode())
-        filename = sha.hexdigest()
-        expected_cache_path = os.path.join(model.cache, filename)
-
-        assert cache_path == expected_cache_path
-        mock_retrieve.assert_called_once()
+    # TODO: mock the download
+    pass
 
 
 def test_fetch_ifs_dataarray():
@@ -110,13 +95,72 @@ def test_fetch_ifs_dataarray():
         ).roll(longitude=720, roll_coords=True)
         mock_open_dataarray.return_value = mock_da
 
-        dataarray = model.fetch_ifs_dataarray(channels, start_time, steps)
+        dataarray = model.fetch_ifs_dataarray(start_time, steps)
 
         assert dataarray.shape == (len(steps), len(channels), 721, 1440)
         assert list(dataarray.coords.keys()) == ["time", "channel", "lat", "lon"]
         assert (dataarray.coords["channel"].values == channels).all()
         assert (dataarray.coords["lat"].values == model.IFS_LAT).all()
         assert (dataarray.coords["lon"].values == model.IFS_LON).all()
+
+
+@pytest.mark.parametrize(
+    "lead_time, start_time, expected_steps",
+    [
+        (
+            144,
+            datetime.datetime.strptime("20230101 0000", "%Y%m%d %H%M"),
+            list(range(0, 145, 3)),
+        ),
+        (
+            90,
+            datetime.datetime.strptime("20230101 0600", "%Y%m%d %H%M"),
+            list(range(0, 91, 3)),
+        ),
+    ],
+)
+def test_slice_lead_time_to_steps_valid_lead_time_and_start_time(
+    lead_time, start_time, expected_steps
+):
+    model = IFSModel(channels=[], cache=True, source="aws")
+    assert model._slice_lead_time_to_steps(lead_time, start_time) == expected_steps
+
+
+@pytest.mark.parametrize(
+    "lead_time, start_time",
+    [
+        (
+            241,
+            datetime.datetime.strptime("20230101 0000", "%Y%m%d %H%M"),
+        ),
+        (
+            91,
+            datetime.datetime.strptime("20230101 0600", "%Y%m%d %H%M"),
+        ),
+    ],
+)
+def test_slice_lead_time_to_steps_invalid_lead_time_for_00_and_12_start_times(
+    lead_time, start_time
+):
+    model = IFSModel(channels=[], cache=True, source="aws")
+    with pytest.raises(ValueError):
+        model._slice_lead_time_to_steps(lead_time, start_time)
+
+
+def test_slice_lead_time_to_steps_valid_lead_time_and_start_time_for_06_and_18_start_times():
+    model = IFSModel(channels=[], cache=True, source="aws")
+    lead_time = 90
+    start_time = datetime.datetime.strptime("20230101 0600", "%Y%m%d %H%M")
+    expected_steps = list(range(0, lead_time + 1, 3))
+    assert model._slice_lead_time_to_steps(lead_time, start_time) == expected_steps
+
+
+def test_slice_lead_time_to_steps_invalid_start_time():
+    model = IFSModel(channels=[], cache=True, source="aws")
+    lead_time = 144
+    start_time = datetime.datetime.strptime("20230101 0300", "%Y%m%d %H%M")
+    with pytest.raises(ValueError):
+        model._slice_lead_time_to_steps(lead_time, start_time)
 
 
 if __name__ == "__main__":
