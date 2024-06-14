@@ -1,6 +1,14 @@
+import os
+import hashlib
 import numpy as np
 import xarray as xr
 import datetime
+from pathlib import Path
+from tqdm import tqdm
+from loguru import logger
+import s3fs
+import shutil
+from s3fs.core import S3FileSystem
 from ...common import LOCAL_CACHE, save_forecast
 
 
@@ -154,16 +162,15 @@ class GFSModel:
 
     GFS_LAT = np.linspace(90, -90, 721)
     GFS_LON = np.linspace(0, 360, 1440, endpoint=False)
-
     GFS_BUCKET_NAME = "noaa-gfs-bdp-pds"
     MAX_BYTE_SIZE = 5000000
 
-    def __init__(self, channels: list[str], cache: bool = True, verbose: bool = True):
+    def __init__(self, channels: list[str], cache: bool = True):
         self._cache = cache
-        self._verbose = verbose
         self.model_name = "GFS"
         self.assure_channels_exist(channels)
         self.channels = channels
+        self.cached_files = []
 
     def assure_channels_exist(self, channels: list[str]):
         for channel in channels:
@@ -189,6 +196,7 @@ class GFSModel:
 
     @property
     def time_step(self):
+        # TODO: implement time step similar to GlobalModels
         pass
 
     @property
@@ -199,11 +207,57 @@ class GFSModel:
     def out_channel_names(self):
         return self.channels
 
+    def clear_cached_files(self):
+        """Clears the cached files from the current session."""
+        for file_path in self.cached_files:
+            if os.path.exists(file_path):
+                logger.info(f"Deleting cached file: {file_path}")
+                os.remove(file_path)
+        self.cached_files = []
+
+    def clear_cache(self):
+        """Clears the entire cache directory."""
+        cache_dir = self.cache
+        if os.path.exists(cache_dir):
+            logger.info(f"Clearing cache directory: {cache_dir}")
+            shutil.rmtree(cache_dir)
+        else:
+            logger.debug(f"Cache directory not found: {cache_dir}")
+
+    def available_start_time(self, start_time: datetime) -> bool:
+        """Checks if the given date and time are available in the  GFS object store.
+
+        Parameters
+        ----------
+        start_time : datetime
+            The date and time to check availability for.
+
+        Returns
+        -------
+        bool
+            True if data for the specified date and time is available, False otherwise.
+        """
+
+        fs = S3FileSystem(anon=True)
+
+        # Object store directory for given time
+        # Should contain two keys: atmos and wave
+        file_name = f"gfs.{start_time.year}{start_time.month:0>2}{start_time.day:0>2}/{start_time.hour:0>2}/"
+        s3_uri = f"s3://{self.GFS_BUCKET_NAME}/{file_name}"
+        exists = fs.exists(s3_uri)
+        (
+            logger.debug(f"{s3_uri} is available")
+            if exists
+            else logger.debug(f"{s3_uri} is NOT available")
+        )
+
+        return exists
+
     def predict(
         self,
         date: str,  # YYYMMDD, e.g. 20180101
         time: str,  # HHMM, e.g. 0300, 1400, etc
-        lead_time: int = 24,  # in hours 0-240,
+        lead_time: int = 24,  # in hours 0-394,
         save: bool = False,
         save_config: dict = {},
     ) -> xr.DataArray:
@@ -217,7 +271,7 @@ class GFSModel:
         time : str
             The time in the format HHMM, e.g. 0300, 1400, etc.
         lead_time : int, optional
-            The lead time in hours 0-240, by default 24.
+            The lead time in hours [0-394], by default 24.
         save : bool, optional
             Whether to save the prediction, by default False.
         save_config : dict, optional
@@ -228,27 +282,182 @@ class GFSModel:
         xr.DataArray
             The prediction as a DataArray.
         """
-        pass
+        start_time = datetime.datetime.strptime(f"{date} {time}", "%Y%m%d %H%M")
+        steps = self._slice_lead_time_to_steps(lead_time)
+        logger.debug(f"Forecast start time: {start_time}")
+        logger.debug(f"Forecast steps: {steps}")
+        logger.debug(f"len(steps): {len(steps)}")
+        darray = self.fetch_gfs_dataarray(start_time, steps)
+        if save:
+            save_forecast(
+                pred=darray,
+                model_name=self.model_name,
+                start_time=start_time,
+                pred_time=start_time + datetime.timedelta(hours=lead_time),
+                source="gfs",
+                config=save_config,
+            )
+        if not self._cache:
+            logger.debug("Clearing cached files downloaded during the session")
+            self.clear_cached_files()
+
+        return darray
+
+    def snipe(
+        self,
+        target_date: str,  # YYYMMDD, e.g. 20180101
+        target_time: str,  # HHMM, e.g. 1200, 1800, etc
+        max_hours_back: int = 0,
+    ) -> dict[np.datetime64, xr.DataArray]:
+        """
+        Retrieves the forecast for a specific target datetime, considering multiple possible start times.
+
+        Parameters
+        ----------
+        target_date : str, optional
+            The target date in YYYMMDD format, e.g., 20180101.
+        target_time : str, optional
+            The target time in HHMM format, e.g., 1200, 1800, etc.
+        max_hours_back : int
+            The maximum number of hours prior to the target datetime to consider for forecast initiation.
+
+        Returns
+        -------
+        dict
+            A dictionary mapping each start time to the corresponding forecast data for the target datetime.
+        """
+        target_datetime = datetime.datetime.strptime(
+            f"{target_date} {target_time}", "%Y%m%d %H%M"
+        )
+        forecasts = {}
+
+        for hours_back in range(0, max_hours_back + 1, 6):
+            start_time = target_datetime - datetime.timedelta(hours=hours_back)
+            logger.info(f"Fetching for start_time: {start_time}")
+            lead_time = int((target_datetime - start_time).total_seconds() / 3600)
+            logger.debug(f"Lead time is set to {lead_time}")
+            if not (
+                self.available_start_time(start_time)
+                and self._validate_lead_time(lead_time)
+            ):
+                logger.warning(
+                    f"Invalid or unavailable forecast for start time: {start_time}, lead time: {lead_time}"
+                )
+                continue
+
+            forecast_data = self.fetch_gfs_dataarray(start_time, [lead_time])
+            forecasts[np.datetime64(start_time)] = forecast_data
+
+        return forecasts
+
+    def _validate_start_time(self, start_time: datetime) -> bool:
+        """Check if the specified time is valid based on forecast issuance schedule."""
+        valid_hours = {0, 6, 12, 18}
+        return start_time.hour in valid_hours
+
+    def _validate_lead_time(self, lead_time: int) -> bool:
+        return lead_time in list(range(0, 385))
+
+    def _slice_lead_time_to_steps(self, lead_time: int) -> list[int]:
+        return list(range(0, lead_time + 1))
+
+    def _get_grib_filename(
+        self, start_time: datetime, step: int, is_index: bool = False
+    ):
+        filename = f"gfs.{start_time.year}{start_time.month:0>2}{start_time.day:0>2}/{start_time.hour:0>2}"
+        filename = os.path.join(
+            filename, f"atmos/gfs.t{start_time.hour:0>2}z.pgrb2.0p25.f{step:03d}"
+        )
+        if is_index:
+            filename += ".idx"
+        return filename
+
+    def get_grib_s3uri(self, start_time: datetime, step: int, is_index: bool = False):
+        return os.path.join(
+            self.GFS_BUCKET_NAME, self._get_grib_filename(start_time, step, is_index)
+        )
 
     def fetch_gfs_dataarray(
         self,
-        channels: list[str],
         start_time: datetime,
+        steps: list[int] = list(range(0, 385)),
     ) -> xr.DataArray:
-        pass
+        """
+        TBA
+        Additional information
+        model cycle runtimes are 00, 06, 12, 18
+        >> aws s3 ls --no-sign-request s3://noaa-gfs-bdp-pds/gfs.20240610/
 
-    def _fetch_index(self, time: datetime) -> dict[str, tuple[int, int]]:
+                           PRE 00/
+                           PRE 06/
+                           PRE 12/
+                           PRE 18/
+        """
+
+        gfs_dataarray = xr.DataArray(
+            data=np.empty(
+                (len(steps), len(self.channels), len(self.GFS_LAT), len(self.GFS_LON))
+            ),
+            dims=["time", "channel", "lat", "lon"],
+            coords={
+                "time": start_time
+                + np.array([datetime.timedelta(hours=s) for s in steps]),
+                "channel": self.channels,
+                "lat": self.GFS_LAT,
+                "lon": self.GFS_LON,
+            },
+        )
+        logger.debug(f"Creating GFS dataarray with shape: {gfs_dataarray.shape}")
+
+        for i, channel in enumerate(
+            tqdm(self.channels, desc=f"Fetching GFS for {start_time}")
+        ):
+            gfs_id, gfs_level, modifier_func = GFS_Vocabulary.get(channel)
+            gfs_name = f"{gfs_id}::{gfs_level}"
+            # TODO: Check if gfs_name is in index_file
+            for sidx, step in enumerate(steps):
+                index_file = self._fetch_index(start_time, step)
+                byte_offset, byte_length = (
+                    index_file[gfs_name][0],
+                    index_file[gfs_name][1],
+                )
+                pred_time = start_time + datetime.timedelta(hours=step)
+
+                # Download the grib file to cache
+                logger.debug(
+                    f"Fetching GFS grib file for channel: {channel} at {pred_time}"
+                )
+                s3_uri = self.get_grib_s3uri(start_time, step)
+                grib_file = self._download_s3_grib_to_cache(
+                    s3_uri, byte_offset=byte_offset, byte_length=byte_length
+                )
+                self.cached_files.append(grib_file)
+                # Open into xarray data-array
+                da = xr.open_dataarray(
+                    grib_file, engine="cfgrib", backend_kwargs={"indexpath": ""}
+                )
+                logger.debug(f"Cached data array shape: {da.shape}")
+                gfs_dataarray[sidx, i, :, :] = modifier_func(da.values)
+
+        return gfs_dataarray
+
+    def _fetch_index(
+        self, start_time: datetime, step: int
+    ) -> dict[str, tuple[int, int]]:
         """Fetch GFS atmospheric index file
 
         Parameters
         ----------
-        time : datetime
-            Date time to fetch
+        start_time : datetime
+            The start time of the forecast.
+        step : int
+            The forecast step in hours.
 
         Returns
         -------
         dict[str, tuple[int, int]]
             Dictionary of GFS vairables (byte offset, byte length)
+            Key is the GFS variable name.
 
         Additional information
         ----------------------
@@ -258,12 +467,15 @@ class GFSModel:
         >> (0, 1001587)
         index_table["CLMR::1 hybrid level"]
         >> (1001587, 101339)
+
+        CC is the model cycle runtime (i.e. 00, 06, 12, 18)
+        FFF is the forecast hour of product from 000 - 384
+        YYYYMMDD is the Year, Month and Day
+        0.25 degree resolution	gfs.tCCz.pgrb2.0p25.fFFF	ANL FH000
+
         """
         # https://www.nco.ncep.noaa.gov/pmb/products/gfs/
-        file_name = f"gfs.{time.year}{time.month:0>2}{time.day:0>2}/{time.hour:0>2}"
-        file_name = os.path.join(
-            file_name, f"atmos/gfs.t{time.hour:0>2}z.pgrb2.0p25.f000.idx"
-        )
+        file_name = self._get_grib_filename(start_time, step, is_index=True)
         s3_uri = os.path.join(self.GFS_BUCKET_NAME, file_name)
         # Grab index file: hold channel/variable information
         # Example:
@@ -271,7 +483,8 @@ class GFSModel:
         #   2:1001587:d=2024060500:CLMR:1 hybrid level:anl:
         #   3:1102926:d=2024060500:ICMR:1 hybrid level:anl:
 
-        index_file = self._download_s3_index_cached(s3_uri)
+        index_file = self._download_s3_index_to_cache(s3_uri)
+
         with open(index_file) as file:
             index_lines = [line.rstrip() for line in file]
 
@@ -296,30 +509,58 @@ class GFSModel:
 
         return index_table
 
-    def _download_s3_index_cached(self, path: str) -> str:
+    def _download_s3_index_to_cache(self, path: str) -> str:
         sha = hashlib.sha256(path.encode())
         filename = sha.hexdigest()
 
         cache_path = os.path.join(self.cache, filename)
-        fs = s3fs.S3FileSystem(anon=True, client_kwargs={})
-        fs.get_file(path, cache_path)
-
+        if not Path(cache_path).is_file():
+            logger.debug(f"Getting GFS index file from {path}")
+            fs = s3fs.S3FileSystem(anon=True, client_kwargs={})
+            fs.get_file(path, cache_path)
+        else:
+            logger.debug(
+                f"Index File {cache_path} already exists in cache, skipping download."
+            )
+        self.cached_files.append(cache_path)
         return cache_path
 
-    def _download_s3_grib_cached(
+    def _download_s3_grib_to_cache(
         self, path: str, byte_offset: int = 0, byte_length: int = None
     ) -> str:
+        """
+        Downloads a GRIB file from an S3 bucket and caches it locally.
+
+        Parameters
+        ----------
+        path : str
+            The path to the GRIB file in the S3 bucket.
+        byte_offset : int, optional
+            The byte offset to start downloading from. Defaults to 0.
+        byte_length : int, optional
+            The number of bytes to download. Defaults to None, which downloads the entire file.
+
+        Returns
+        -------
+        str
+            The path to the locally cached file.
+        """
         sha = hashlib.sha256((path + str(byte_offset)).encode())
         filename = sha.hexdigest()
 
         cache_path = os.path.join(self.cache, filename)
 
-        fs = s3fs.S3FileSystem(anon=True, client_kwargs={})
-        if not pathlib.Path(cache_path).is_file():
+        if not Path(cache_path).is_file():
+            logger.debug(f"Getting GFS grib file from {path}")
+            fs = s3fs.S3FileSystem(anon=True, client_kwargs={})
             data = fs.read_block(path, offset=byte_offset, length=byte_length)
             with open(cache_path, "wb") as file:
                 file.write(data)
-
+        else:
+            logger.debug(
+                f"File {cache_path} already exists in cache, skipping download."
+            )
+        self.cached_files.append(cache_path)
         return cache_path
 
 

@@ -169,6 +169,38 @@ class IFSModel:
         else:
             logger.debug(f"Cache directory not found: {cache_dir}")
 
+    def available_start_time(self, start_time: datetime) -> bool:
+        """Checks if the given date and time are available in the IFS AWS data store.
+
+        Parameters
+        ----------
+        start_time : datetime
+            The date and time to check availability for.
+
+        Returns
+        -------
+        bool
+            True if data for the specified date and time is available, False otherwise.
+        """
+
+        s3 = boto3.client(
+            "s3", config=botocore.config.Config(signature_version=botocore.UNSIGNED)
+        )
+        file_prefix = f"{start_time.strftime('%Y%m%d')}/{start_time.hour:02d}z/"
+        logger.debug(f"Checking for data at prefix: {file_prefix}")
+        try:
+            response = s3.list_objects_v2(
+                Bucket=self.IFS_BUCKET_NAME,
+                Prefix=file_prefix,
+                Delimiter="/",
+                MaxKeys=1,
+            )
+        except botocore.exceptions.ClientError as e:
+            logger.error("Failed to access data from the IFS S3 bucket: {e}")
+            return False
+
+        return "KeyCount" in response and response["KeyCount"] > 0
+
     def predict(
         self,
         date: str,  # YYYMMDD, e.g. 20180101
@@ -200,7 +232,9 @@ class IFSModel:
         """
         start_time = datetime.datetime.strptime(f"{date} {time}", "%Y%m%d %H%M")
         steps = self._slice_lead_time_to_steps(lead_time, start_time)
+        logger.debug(f"Forecast start time: {start_time}")
         logger.debug(f"Forecast steps: {steps}")
+        logger.debug(f"len(steps): {len(steps)}")
         darray = self.fetch_ifs_dataarray(start_time, steps)
         if save:
             save_forecast(
@@ -217,14 +251,21 @@ class IFSModel:
 
         return darray
 
-    def predict_target(self, target_datetime: datetime.datetime, max_hours_back: int):
+    def snipe(
+        self,
+        target_date: str,  # YYYMMDD, e.g. 20180101
+        target_time: str,  # HHMM, e.g. 1200, 1800, etc
+        max_hours_back: int = 0,
+    ) -> dict[np.datetime64, xr.DataArray]:
         """
         Retrieves the forecast for a specific target datetime, considering multiple possible start times.
 
         Parameters
         ----------
-        target_datetime : datetime.datetime
-            The target datetime for the forecast.
+        target_date : str, optional
+            The target date in YYYMMDD format, e.g., 20180101.
+        target_time : str, optional
+            The target time in HHMM format, e.g., 1200, 1800, etc.
         max_hours_back : int
             The maximum number of hours prior to the target datetime to consider for forecast initiation.
 
@@ -233,6 +274,10 @@ class IFSModel:
         dict
             A dictionary mapping each start time to the corresponding forecast data for the target datetime.
         """
+
+        target_datetime = datetime.datetime.strptime(
+            f"{target_date} {target_time}", "%Y%m%d %H%M"
+        )
         forecasts = {}
 
         for hours_back in range(0, max_hours_back + 1, 6):
@@ -334,38 +379,6 @@ class IFSModel:
                 )
                 return None
         return cache_path
-
-    def available_start_time(self, start_time: datetime) -> bool:
-        """Checks if the given date and time are available in the IFS AWS data store.
-
-        Parameters
-        ----------
-        start_time : datetime
-            The date and time to check availability for.
-
-        Returns
-        -------
-        bool
-            True if data for the specified date and time is available, False otherwise.
-        """
-
-        s3 = boto3.client(
-            "s3", config=botocore.config.Config(signature_version=botocore.UNSIGNED)
-        )
-        file_prefix = f"{start_time.strftime('%Y%m%d')}/{start_time.hour:02d}z/"
-        logger.debug(f"Checking for data at prefix: {file_prefix}")
-        try:
-            response = s3.list_objects_v2(
-                Bucket=self.IFS_BUCKET_NAME,
-                Prefix=file_prefix,
-                Delimiter="/",
-                MaxKeys=1,
-            )
-        except botocore.exceptions.ClientError as e:
-            logger.error("Failed to access data from the IFS S3 bucket: {e}")
-            return False
-
-        return "KeyCount" in response and response["KeyCount"] > 0
 
     def _validate_start_time(self, start_time: datetime) -> bool:
         """Check if the specified time is valid based on forecast issuance schedule."""
@@ -503,7 +516,7 @@ class IFSModel:
 
 if __name__ == "__main__":
 
-    # Ensure that the current time is rounded down to the closest multiple of 6 hours,
+    # Ensure that the forecast start time is rounded down to the closest multiple of 6 hours,
     # at least 12 hours ago
     now = datetime.datetime.now()
     start_time = now.replace(minute=0, second=0, microsecond=0) - datetime.timedelta(
