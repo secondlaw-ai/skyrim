@@ -9,7 +9,7 @@ import earth2mip.networks.graphcast as graphcast
 from .base import GlobalModel, GlobalPrediction
 
 # fmt: off
-
+# TODO: check tp06
 CHANNELS = ["z50", "z100", "z150", "z200", "z250", "z300", "z400", "z500", "z600", "z700",
             "z850", "z925", "z1000", "q50", "q100", "q150", "q200", "q250", "q300", "q400",
             "q500", "q600", "q700", "q850", "q925", "q1000", "t50", "t100", "t150", "t200",
@@ -53,7 +53,7 @@ class GraphcastModel(GlobalModel):
         initial_condition: str | Path | None = None,
     ) -> xr.DataArray | xr.Dataset:
         # TODO: initial condition
-        
+
         # NOTE: this only works for graphcast operational model
         # some info about stepper:
         # https://github.com/NVIDIA/earth2mip/blob/86b11fe4ba2f19641802112e8b0ba6b962123130/earth2mip/time_loop.py#L114-L122

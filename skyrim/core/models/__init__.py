@@ -11,4 +11,6 @@ MODEL_FACTORY = {
     "fourcastnet_v2": (FourcastnetV2Model, FourcastnetV2Prediction),
     "dlwp": (DLWPModel, DLWPPrediction),
     "graphcast": (GraphcastModel, GraphcastPrediction),
+    # "ifs": (IFSModel, IFSPrediction),
+    # "gfs": (GFSModel, GFSPrediction),
 }
