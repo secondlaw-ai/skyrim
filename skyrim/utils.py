@@ -2,6 +2,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 import os
 from loguru import logger
+import numpy as np
+import datetime
 
 
 def ensure_ecmwf_loaded():
@@ -41,6 +43,32 @@ def ensure_cds_loaded():
             raise Exception("CDS API config not found in the environment.")
         Path("~/.cdsapirc").write_text(f"key: {cds_key}\nurl: {cds_url}")
         logger.success(f"Successfully wrote CDS API key to /root/.cdsapi")
+
+
+def np_datetime64_to_datetime(time):
+    """
+    Converts a numpy.datetime64 object or an array of numpy.datetime64 objects to datetime.datetime objects.
+
+    Parameters:
+    - time: numpy.datetime64 object or array of numpy.datetime64 objects to be converted
+
+    Returns:
+    - A datetime.datetime object or a list of datetime.datetime objects
+    """
+
+    def convert_single_time(single_time):
+        _unix = np.datetime64(0, "s")  # Unix epoch start time
+        _ds = np.timedelta64(1, "s")  # One second time delta
+        return datetime.datetime.utcfromtimestamp((single_time - _unix) / _ds)
+
+    if isinstance(time, np.datetime64):
+        return convert_single_time(time)
+    elif isinstance(time, np.ndarray) and time.dtype == "datetime64[ns]":
+        return [convert_single_time(t) for t in time]
+    else:
+        raise TypeError(
+            "The provided time must be a numpy.datetime64 object or an array of numpy.datetime64 objects"
+        )
 
 
 if __name__ == "__main__":
