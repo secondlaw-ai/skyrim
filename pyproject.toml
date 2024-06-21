@@ -32,6 +32,8 @@ dependencies = [
   'scipy',
   'pandas',
   'click',
+  'openmeteo-requests',
+  'meteostat',
 ]
 
 [project.scripts]
