@@ -7,16 +7,16 @@
 import os
 import shutil
 import hashlib
-from typing import Union, List, Optional
+import datetime
+from typing import Union, List, Optional, Literal
+import json
 from pathlib import Path
 from tqdm import tqdm
 from loguru import logger
 import numpy as np
 import xarray as xr
-import datetime
 import cdsapi
-
-from ...common import LOCAL_CACHE
+from ...common import LOCAL_CACHE, OUTPUT_DIR
 
 
 class CDS_Vocabulary:
@@ -169,7 +169,7 @@ class CDS:
         time: int | list[int],
     ) -> xr.DataArray:
 
-        t = self._format_to_datetime(year, month, day, time)
+        t = self._ymdt_to_datetime(year, month, day, time)
         assert isinstance(t, list), "UPSY."
         assert isinstance(t[0], datetime.datetime), "UPSY."
         cds_dataarray = self.fetch_cds_dataarray(t)
@@ -273,7 +273,7 @@ class CDS:
 
     def _download_cds_grib_to_cache(
         self,
-        time: str,
+        time: list[datetime.datetime],
         variable: str,
         levtype: str,
         level: str,
@@ -333,13 +333,14 @@ class CDS:
         logger.debug(f"Request body: {request_body}")
         return request_body
 
-    def _format_to_datetime(
+    def _ymdt_to_datetime(
         self,
         year: Union[int, List[int]],
         month: Union[int, List[int]],
         day: Union[int, List[int]],
         time: Union[int, List[int]],
     ) -> List[datetime.datetime]:
+        """Converts year, month, day, and time to a list of datetime.datetime objects."""
         # NOTE: could be placed in common.py
 
         if isinstance(year, int):
@@ -359,17 +360,152 @@ class CDS:
             for t in time
         ]
 
-    def create_global_dataset(
+    def benchmark(
         self,
         date: str,  # YYYMMDD, e.g. 20180101
-        time: str,  # HHMM, e.g. 0300, 1400, etc
+        time: str = "0000",  # HHMM, e.g. 0300, 1400, etc
         lead_time: int = 24,  # in hours
         time_step: int = 6,  # in hours
+    ) -> xr.DataArray:
+        """
+        Fetches cds data array for a given date and time for bechmarking purposes.
+        NOTE: the inferface is similar to skyrim.skyrim.predict for quick testing.
+        """
+        start_time = datetime.datetime.strptime(date + time, "%Y%m%d%H%M")
+        timestamps = [
+            start_time + datetime.timedelta(hours=i)
+            for i in range(0, lead_time + 1, time_step)
+        ]
+        return self.fetch_cds_dataarray(timestamps)
+
+    def create_dataset(
+        self,
+        date: str,  # YYYMMDD, e.g. 20180101
+        time: str = "0000",  # HHMM, e.g. 0300, 1400, etc
+        lead_time: int = 24,  # in hours
+        time_step: int = 6,  # in hours
+        output_dir: str = OUTPUT_DIR,
+        batching: Literal["daily", "monthly"] = "daily",
     ):
-        # for quick testing using the inferface similar to skyrim.skyrim.predict
-        # time_step is provided as an argument to fetch the same time step data with the
-        # model or model ensemble that we are evaluating
-        pass
+        """
+        Create a dataset by generating and batching timestamps, then saving to NetCDF files.
+
+        Parameters
+        ----------
+        date : str
+            The start date in YYYYMMDD format.
+        time : str, optional
+            The start time in HHMM format (default is "0000").
+        lead_time : int, optional
+            The lead time in hours (default is 24).
+        time_step : int, optional
+            The time step in hours (default is 6).
+        output_dir : str, optional
+            The directory to save the output files (default is OUTPUT_DIR).
+        batching : {'daily', 'monthly'}, optional
+            The batching method, either "daily" or "monthly" (default is "daily").
+
+        Returns
+        -------
+        str
+        The output directory containing the created dataset.
+        """
+
+        # create daily slices of data for the given date
+        # -- output_dir f"{start_time}__LT{lead_time}h__TS{time_step}h"
+        #   -- metadata.json
+        #   -- 20240101T0000_20240101T1800.nc
+        #   -- 20240101T0000_20240101T1800.nc
+        #   -- ...
+
+        start_time = datetime.datetime.strptime(date + time, "%Y%m%d%H%M")
+        logger.debug(
+            f"Creating dataset for \n"
+            f"start_time: {start_time}\n"
+            f"lead time {lead_time}h\n"
+            f"time step {time_step}h"
+        )
+
+        output_dir = os.path.join(
+            output_dir, f"{date}T{time}__LT{lead_time}h__TS{time_step}h__B{batching}"
+        )
+        logger.debug(f"Output directory: {output_dir}")
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            logger.info(f"Created output directory: {output_dir}")
+
+        metadata = {
+            "channels": self.channels,
+            "date": date,
+            "time": time,
+            "lead_time": lead_time,
+            "time_step": time_step,
+            "batching": batching,
+        }
+
+        # generate time stamps
+        timestamps = [
+            start_time + datetime.timedelta(hours=i)
+            for i in range(0, lead_time + 1, time_step)
+        ]
+
+        # batch timestamps into daily or monthly slices
+        if batching == "monthly":
+            timestamps_batched = self._batch_timestamps_monthly(timestamps)
+        elif batching == "daily":
+            timestamps_batched = self._batch_timestamps_daily(timestamps)
+        else:
+            raise ValueError(f"Invalid batching option: {batching}")
+
+        logger.info(f"{len(timestamps_batched)} files will be created.")
+        logger.info(f"Output directory: {output_dir}")
+        for i, ts_batch in enumerate(timestamps_batched):
+            start_dt, end_dt = ts_batch[0], ts_batch[-1]
+            start_dt_str = start_dt.strftime("%Y%m%dT%H%M")
+            end_dt_str = end_dt.strftime("%Y%m%dT%H%M")
+            filename = os.path.join(output_dir, f"{start_dt_str}__{end_dt_str}.nc")
+            da = self.fetch_cds_dataarray(ts_batch)
+            da.to_netcdf(filename)
+            logger.info(f"Saved file: {filename}")
+            self.clear_cached_files()
+
+        # save metadata
+        metadata_filename = os.path.join(output_dir, "metadata.json")
+        logger.debug(f"Saving metadata to {metadata_filename}")
+        with open(metadata_filename, "w") as f:
+            json.dump(metadata, f)
+        return output_dir
+
+    def _batch_timestamps_monthly(
+        self,
+        timestamps: List[datetime.datetime],
+    ) -> List[List[datetime.datetime]]:
+        """
+        Group timestamps into monthly slices, considering both year and month.
+        """
+        unique_year_months = sorted(list(set((t.year, t.month) for t in timestamps)))
+        print(unique_year_months)
+        monthly_slices = []
+        for year, month in unique_year_months:
+            monthly_slice = [
+                t for t in timestamps if t.year == year and t.month == month
+            ]
+            monthly_slices.append(monthly_slice)
+        return monthly_slices
+
+    def _batch_timestamps_daily(
+        self,
+        timestamps: List[datetime.datetime],
+    ) -> List[List[datetime.datetime]]:
+        """
+        Group timestamps into daily slices.
+        """
+        unique_dates = sorted(list(set([t.date() for t in timestamps])))
+        daily_slices = []
+        for date in unique_dates:
+            daily_slice = [t for t in timestamps if t.date() == date]
+            daily_slices.append(daily_slice)
+        return daily_slices
 
     def create_regional_dataset(
         self,
@@ -380,13 +516,6 @@ class CDS:
         time_step: int = 1,
         **kwargs,
     ):
-        pass
-
-    def create_bechmark_dataset(
-        self,
-        time: datetime.datetime | list[datetime.datetime],
-    ):
-        """Create a benchmark dataset for a given start time and lead time."""
         pass
 
 
