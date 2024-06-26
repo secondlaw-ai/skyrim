@@ -259,6 +259,7 @@ class CDS:
                 "lon": self.CDS_LON,
             },
         )
+        logger.debug(f"Initialized cds_dataarray with shape: {cds_dataarray.shape}")
         for i, channel in enumerate(self.channels):
             cds_id, cds_levtype, cds_level = CDS_Vocabulary.get(channel)
             cache_path = self._download_cds_grib_to_cache(
@@ -267,6 +268,14 @@ class CDS:
             da = xr.open_dataarray(
                 cache_path, engine="cfgrib", backend_kwargs={"indexpath": ""}
             )
+            logger.debug(f"Fetched channel: {channel}\n")
+            logger.debug(f"cache path: {cache_path}\n")
+            logger.debug(f"Fetched dataarray's shape: {da.shape}")
+            # NOTE: During fetching the request body is built using the time, variable, levtype, and level
+            #       the enumeration could change the size of the time dimension, therefore the dataarray
+            #       should be sliced across the time dimension.
+            # Fix this if turns out to be a problem.
+            da = da.sel(time=time)
             cds_dataarray[:, i, :, :] = da.values
 
         return cds_dataarray
@@ -287,7 +296,10 @@ class CDS:
         cache_path = os.path.join(self.cache, filename)
 
         logger.debug(
-            f"Request: datetime: {time}, variable: {variable}, levtype: {levtype}"
+            f"Request time: {time}\n"
+            f"len(time): {len(time)}\n"
+            f"variable: {variable}\n"
+            f"levtype: {levtype}\n"
         )
         logger.debug(f"Cache path: {cache_path}")
 
@@ -317,7 +329,9 @@ class CDS:
         month = sorted(list(set(f"{t.month:02d}" for t in time)))
         day = sorted(list(set(f"{t.day:02d}" for t in time)))
         time = sorted(list(set(t.strftime("%H:%M") for t in time)))
-
+        logger.debug(
+            f"Building requiest body \nYear: {year}\nMonth: {month}\nDay: {day}\nTime: {time} \nVariable: {variable}"
+        )
         # build the request body
         request_body = {
             "variable": variable,
@@ -330,11 +344,11 @@ class CDS:
         }
         if levtype == "reanalysis-era5-pressure-levels":
             request_body["pressure_level"] = level
-        logger.debug(f"Request body: {request_body}")
+        logger.debug(f"Request body:\n{json.dumps(request_body, indent=4)}")
         return request_body
 
+    @staticmethod
     def _ymdt_to_datetime(
-        self,
         year: Union[int, List[int]],
         month: Union[int, List[int]],
         day: Union[int, List[int]],
@@ -360,6 +374,16 @@ class CDS:
             for t in time
         ]
 
+    @staticmethod
+    def _datetime_to_ymdt(time: List[datetime.datetime]):
+        """Converts a list of datetime.datetime objects to year, month, day, and time components."""
+        year = sorted(list(set(t.year for t in time)))
+        month = sorted(list(set(t.month for t in time)))
+        day = sorted(list(set(t.day for t in time)))
+        hour = sorted(list(set(t.hour for t in time)))
+
+        return year, month, day, hour
+
     def benchmark(
         self,
         date: str,  # YYYMMDD, e.g. 20180101
@@ -376,6 +400,9 @@ class CDS:
             start_time + datetime.timedelta(hours=i)
             for i in range(0, lead_time + 1, time_step)
         ]
+        logger.debug(
+            f"Fetching CDS data array for benchmarking for {len(timestamps)} timestamps."
+        )
         return self.fetch_cds_dataarray(timestamps)
 
     def create_dataset(

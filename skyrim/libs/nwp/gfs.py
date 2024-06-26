@@ -171,6 +171,8 @@ class GFSModel:
         self.assure_channels_exist(channels)
         self.channels = channels
         self.cached_files = []
+        logger.info(f"GFS model initialized with channels: {channels}")
+        logger.debug(f"GFS cache location: {self.cache}")
 
     def assure_channels_exist(self, channels: list[str]):
         for channel in channels:

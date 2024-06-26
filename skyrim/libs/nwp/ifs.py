@@ -490,7 +490,9 @@ class IFSModel:
             logger.error(f"No IFS data available for {start_time}")
             return ifs_dataarray
 
-        for i, channel in tqdm(enumerate(self.channels), desc="Downloading IFS data"):
+        for i, channel in tqdm(
+            enumerate(self.channels), desc="Fetching IFS for {start_time}"
+        ):
             ifs_id, ifs_levtype, ifs_level, modifier_func = IFS_Vocabulary.get(channel)
             cache_path = self._download_ifs_channel_grib_to_cache(
                 ifs_id, ifs_levtype, ifs_level, start_time, steps
