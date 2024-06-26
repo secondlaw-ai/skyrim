@@ -39,7 +39,7 @@ def ensure_cds_loaded():
         logger.info(f"Gathering CDS API key from environment...")
         if not cds_key:
             raise Exception("CDS API config not found in the environment.")
-        Path("~/.cdsapirc").write_text(f"key: {cds_key}\nurl: {cds_url}")
+        Path("~/.cdsapirc").expanduser().write_text(f"key: {cds_key}\nurl: {cds_url}")
         logger.success(f"Successfully wrote CDS API key to /root/.cdsapi")
 
 

@@ -1,6 +1,7 @@
 # Skyrim
 outputs
 notebooks/pg*.ipynb
+.cache.pkl
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
