@@ -15,6 +15,9 @@ import botocore
 from ...common import LOCAL_CACHE, save_forecast
 from ...utils import ensure_ecmwf_loaded
 
+# example invocation:
+# python -m skyrim.libs.nwp.ifs --date 20230101 --time 1200 --lead_time 36
+
 
 # skyrim to ifs mapping
 class IFS_Vocabulary:

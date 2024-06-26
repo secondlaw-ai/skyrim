@@ -12,6 +12,9 @@ import shutil
 from s3fs.core import S3FileSystem
 from ...common import LOCAL_CACHE, save_forecast
 
+# example invocation:
+# python -m skyrim.libs.benchmark.gfs --date 20230101 --time 1200 --lead_time 36
+
 
 # skyrim to gfs mapping
 class GFS_Vocabulary:
