@@ -553,7 +553,6 @@ if __name__ == "__main__":
     logger.info(f"lead_time (int) set to {args.lead_time} hours")
 
     model = IFSModel(channels=["u10m", "v10m", "t2m"], cache=False)
-    model.clear_cache()
     forecast = model.predict(
         date=args.date,
         time=args.time,
