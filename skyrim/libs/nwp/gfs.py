@@ -1,5 +1,6 @@
 import os
 import hashlib
+import argparse
 import numpy as np
 import xarray as xr
 import datetime
@@ -10,6 +11,9 @@ import s3fs
 import shutil
 from s3fs.core import S3FileSystem
 from ...common import LOCAL_CACHE, save_forecast
+
+# example invocation:
+# python -m skyrim.libs.benchmark.gfs --date 20230101 --time 1200 --lead_time 36
 
 
 # skyrim to gfs mapping
@@ -171,6 +175,8 @@ class GFSModel:
         self.assure_channels_exist(channels)
         self.channels = channels
         self.cached_files = []
+        logger.info(f"GFS model initialized with channels: {channels}")
+        logger.debug(f"GFScache location: {self.cache}")
 
     def assure_channels_exist(self, channels: list[str]):
         for channel in channels:
@@ -565,11 +571,47 @@ class GFSModel:
 
 
 if __name__ == "__main__":
-    model = GFSModel(channels=["u10m", "v10m", "msl", "u1000", "v1000"])
+
+    # Ensure that the forecast start time is rounded down to the closest multiple of 6 hours,
+    # at least 12 hours ago
+    now = datetime.datetime.now()
+    start_time = now.replace(minute=0, second=0, microsecond=0) - datetime.timedelta(
+        hours=(now.hour % 6 + 12)
+    )
+    default_date = start_time.strftime("%Y%m%d")
+    default_time = start_time.strftime("%H%M")
+    default_lead_time = 36
+
+    # Initialize the argument parser
+    parser = argparse.ArgumentParser(description="Run IFS/HRES weather predictions.")
+    parser.add_argument(
+        "--date",
+        help="The date in YYYMMDD format, e.g., 20230101",
+        default=default_date,
+    )
+    parser.add_argument(
+        "--time",
+        help="The time in HHMM format, e.g., 1200",
+        default=default_time,
+    )
+    parser.add_argument(
+        "--lead_time",
+        type=int,
+        help="The lead time in hours from 0 to 240",
+        default=default_lead_time,
+    )
+    args = parser.parse_args()
+
+    logger.info(f"date (str) set to {args.date}")
+    logger.info(f"time (str) set to {args.time}")
+    logger.info(f"lead_time (int) set to {args.lead_time} hours")
+
+    model = GFSModel(channels=["u10m", "v10m", "t2m"], cache=False)
     forecast = model.predict(
-        date="20240521",
-        time="0000",
-        lead_time=24,
+        date=args.date,
+        time=args.time,
+        lead_time=args.lead_time,
         save=True,
     )
     print(f"forecast.shape: {forecast.shape}")
+    print(f"model.cached_files: {model.cached_files}")

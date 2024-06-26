@@ -15,6 +15,9 @@ import botocore
 from ...common import LOCAL_CACHE, save_forecast
 from ...utils import ensure_ecmwf_loaded
 
+# example invocation:
+# python -m skyrim.libs.nwp.ifs --date 20230101 --time 1200 --lead_time 36
+
 
 # skyrim to ifs mapping
 class IFS_Vocabulary:
@@ -490,7 +493,9 @@ class IFSModel:
             logger.error(f"No IFS data available for {start_time}")
             return ifs_dataarray
 
-        for i, channel in tqdm(enumerate(self.channels), desc="Downloading IFS data"):
+        for i, channel in tqdm(
+            enumerate(self.channels), desc="Fetching IFS for {start_time}"
+        ):
             ifs_id, ifs_levtype, ifs_level, modifier_func = IFS_Vocabulary.get(channel)
             cache_path = self._download_ifs_channel_grib_to_cache(
                 ifs_id, ifs_levtype, ifs_level, start_time, steps
@@ -551,7 +556,6 @@ if __name__ == "__main__":
     logger.info(f"lead_time (int) set to {args.lead_time} hours")
 
     model = IFSModel(channels=["u10m", "v10m", "t2m"], cache=False)
-    model.clear_cache()
     forecast = model.predict(
         date=args.date,
         time=args.time,
