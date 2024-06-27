@@ -18,11 +18,20 @@ from earth2mip.initial_conditions import base
 LOCAL_CACHE = os.getenv("LOCAL_CACHE") or (os.environ["HOME"] + "/.cache/modulus")
 
 
+
 def _get_filename(time: datetime.datetime, lead_time: str, resolution: str = "0p25"):
+    """
+    Derive file name from AWS Open Data. See more here for naming convention: 
+    https://confluence.ecmwf.int/display/DAC/ECMWF+open+data%3A+real-time+forecasts+from+IFS+and+AIFS
+    """
     if resolution not in {"0p4-beta", "0p25"}:
         raise Exception("Unknown resolution for IFS")
+    
+    hour = time.strftime('%Hz')
+    folder_name = 'oper' if hour in {'00z', '12z'} else 'scda' # scda=short-cut-off hi-res forecast
+
     date_format = (
-        f"%Y%m%d/%Hz/ifs/{resolution}/oper/%Y%m%d%H%M%S-{lead_time}-oper-fc.grib2"
+        f"%Y%m%d/%Hz/ifs/{resolution}/{folder_name}/%Y%m%d%H%M%S-{lead_time}-{folder_name}-fc.grib2"
     )
     return time.strftime(date_format)
 
@@ -46,10 +55,10 @@ def _get_channel(c: str, **kwargs) -> xarray.DataArray:
 def download_cached(path):
     cached_path = get_cache_file_path(path)
     if not os.path.exists(cached_path):
-        logger.debug("Downloading IFS initial condition...")
         s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
         bucket_name = "ecmwf-forecasts"
         file_key = path.replace(f"s3://{bucket_name}/", "")
+        logger.debug(f"Downloading IFS initial condition... file_key={file_key}")
         s3.download_file(bucket_name, file_key, cached_path)
         return cached_path
     return cached_path
@@ -85,7 +94,7 @@ def get(time: datetime.datetime, channels: List[str]):
     # this is a very hacky workaround, check this out
     loaded = cfgrib.open_datasets(local_path)
     if len(loaded) > 1:
-        logger.debug(f"Multiple datasets loaded from {loaded}")
+        logger.debug(f"Multiple datasets loaded from ECMWF repo.")
         dataset_0h = xarray.merge(
             [
                 (

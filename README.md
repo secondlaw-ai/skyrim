@@ -142,7 +142,7 @@ See [examples](#examples) section for more.✌️
 
 #### Bare metal
 
-1. You will need a NVIDIA GPU with at least 16GB memory, ideally 24GB. We are working on quantization as well so that in the future it would be possible to run simulations with much less compute. Have an environment set with Python +3.10, Pytorch 2.2.2 and CUDA 11.8. Or if easier start with the docker image: `pytorch/pytorch:2.2.2-cuda11.8-cudnn8-devel`.
+1. You will need a NVIDIA GPU with at least 24GB. We are working on quantization as well so that in the future it would be possible to run simulations with much less compute. Have an environment set with Python == 3.10, Pytorch => 2.2.2 and CUDA +12.x. Or if easier start with the docker image: `nvcr.io/nvidia/pytorch:24.01-py3`.
 2. Install conda ([miniconda](https://docs.anaconda.com/free/miniconda/miniconda-install/) for instance). Then run in that environment:
 
 ```bash
@@ -150,8 +150,6 @@ conda create -y -n skyenv python=3.10
 conda activate skyenv
 ./build.sh
 ```
-
-Note: Because we will be building from scratch this can take long (we need to install pytorch extensions through NVIDIA Apex package).
 
 ## Examples
 

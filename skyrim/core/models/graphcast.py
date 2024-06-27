@@ -7,6 +7,7 @@ from earth2mip import registry
 from earth2mip.initial_conditions import cds, get_initial_condition_for_model
 import earth2mip.networks.graphcast as graphcast
 from .base import GlobalModel, GlobalPrediction
+from ...common import generate_forecast_id, save_forecast
 
 # fmt: off
 # TODO: check tp06
@@ -78,10 +79,12 @@ class GraphcastModel(GlobalModel):
         return state
 
     def rollout(
-        self, start_time: datetime.datetime, n_steps: int = 3, save: bool = True
+        self, start_time: datetime.datetime, n_steps: int = 3, save: bool = True, save_config: dict = {}
     ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
         # TODO:
         pred, output_paths, source = None, [], self.ic_source
+        forecast_id = save_config.get("forecast_id", generate_forecast_id())
+        save_config.update({"forecast_id": forecast_id})
         for n in range(n_steps):
             # returns a state tuple
             pred = self.predict_one_step(start_time, initial_condition=pred)
@@ -89,7 +92,14 @@ class GraphcastModel(GlobalModel):
             if save:
                 # pred[1] is the xr.DataSet that we want to save for now
                 # we should first using channel names to map this DataSet to our regular DataArray
-                output_path = self.save_output(pred[1], start_time, pred_time, source)
+                output_path = save_forecast(
+                    pred[1],
+                    self.model_name,
+                    start_time,
+                    pred_time,
+                    source,
+                    config=save_config,
+                )
                 start_time, source = pred_time, "file"
                 output_paths.append(output_path)
             logger.success(f"Rollout step {n+1}/{n_steps} completed")
