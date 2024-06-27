@@ -78,7 +78,7 @@ class GlobalModel:
         # it does not make sense to keep all the results in the memory
         # return final pred and list of paths of the saved predictions
         # TODO: add functionality to rollout from a given initial condition
-        pred, output_paths, source = None, [], self.ic_source
+        pred, output_paths, source, preds = None, [], self.ic_source, []
         forecast_id = save_config.get("forecast_id", generate_forecast_id())
         save_config.update({"forecast_id": forecast_id})
         for n in range(n_steps):
@@ -93,9 +93,15 @@ class GlobalModel:
                     source,
                     config=save_config,
                 )
-                start_time, source = pred_time, "file"
                 output_paths.append(output_path)
+            else:
+                if n > 0:
+                    preds.append(pred.isel(time=1))
+                else:
+                    preds.append(pred)
+            start_time, source = pred_time, "file"
             logger.success(f"Rollout step {n+1}/{n_steps} completed")
+        pred = xr.concat(preds, dim='time')
         return pred, output_paths
 
 
@@ -225,7 +231,6 @@ class GlobalPrediction:
 
     def surface_wind_speed(self, lat: float, lon: float, n_step: int | None = 1):
         return self.wind_speed(lat, lon, pressure_level=1000, n_step=n_step)
-
 
 class GlobalPredictionRollout:
     def __init__(self, rollout: list[str | Path | xr.DataArray]):

@@ -1,6 +1,7 @@
 # Skyrim
 outputs
 notebooks/pg*.ipynb
+notebooks/*.csv
 .cache.pkl
 
 ### Python ###
