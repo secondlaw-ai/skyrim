@@ -28,6 +28,7 @@ class Skyrim:
             raise ValueError(f"Invalid model name(s): {missing_names}")
 
         self.model_names = model_names
+        self.ic_source = ic_source
 
         if len(model_names) > 1:
             logger.info(f"Initializing ensemble model with {model_names}")
@@ -40,7 +41,7 @@ class Skyrim:
         )
 
     def __repr__(self) -> str:
-        return f"Skyrim({self.model_name})"
+        return f"Skyrim(models={self.model_names},ic={self.ic_source})"
 
     @staticmethod
     def list_available_models():
