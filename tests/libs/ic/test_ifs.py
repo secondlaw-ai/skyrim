@@ -26,7 +26,6 @@ def test_ifs_ic_gets_right_fourcastnet():
             y = ic_data.squeeze()[ix].double().to("cpu")
             x = torch.from_numpy(ifs_data.sel(variable=i).values.squeeze())
             if i.startswith("z") or i.startswith("r"):
-                # skip z as there seems to be a bug.
                 torch.allclose(x[:719, :], y[:719, :], rtol=1e-1)
 
         if len(fails):
