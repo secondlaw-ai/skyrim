@@ -17,6 +17,7 @@ import numpy as np
 import xarray as xr
 import cdsapi
 from ...common import LOCAL_CACHE, OUTPUT_DIR
+from ...utils import convert_datetime64_to_datetime, convert_datetime64_to_str
 
 
 class CDS_Vocabulary:
@@ -132,7 +133,7 @@ class CDS_Vocabulary:
 
     VOCAB = build_vocab()
 
-    def __getitem(self, key):
+    def __getitem__(self, key):
         """Allow dictionary-like access (e.g., CDS_Vocabulary['u100'])"""
         return self.VOCAB[key]
 
@@ -154,11 +155,11 @@ class CDS:
 
     def __init__(self, channels: list[str], cache: bool = True):
         self._cache = cache
-        self.channels = channels
+        self.channels = sorted(channels)
         self.assure_channels_exist(channels)
         self.cached_files = []
         self.cds_client = cdsapi.Client()
-        logger.info(f"CDS client initialized with channels: {channels}")
+        logger.info(f"CDS client initialized with channels: {self.channels}")
         logger.debug(f"CDS cache location: {self.cache}")
 
     def __call__(
@@ -201,12 +202,8 @@ class CDS:
         cache_location = os.path.join(LOCAL_CACHE, "cds")
         if not self._cache:
             cache_location = os.path.join(LOCAL_CACHE, "cds", "tmp")
-            logger.debug(f"Using temporary cache location: {cache_location}")
-
         if not os.path.exists(cache_location):
             os.makedirs(cache_location)
-            logger.info(f"Created cache directory at {cache_location}")
-
         return cache_location
 
     def clear_cached_files(self):
@@ -275,6 +272,15 @@ class CDS:
             #       the enumeration could change the size of the time dimension, therefore the dataarray
             #       should be sliced across the time dimension.
             # Fix this if turns out to be a problem.
+
+            # NOTE: When the time dimension is not present in the dataarray, it should be expanded.
+            #       happens when len(time) == 1,
+            # TODO: check if this is the case for IFSModel and GFSModel.
+            if "time" not in da.dims:
+                logger.debug("Expanding time dimension in dataarray.")
+                da = da.expand_dims("time")
+                logger.debug(f"Expanded dataarray's shape: {da.shape}")
+
             da = da.sel(time=time)
             cds_dataarray[:, i, :, :] = da.values
 
@@ -396,10 +402,7 @@ class CDS:
         NOTE: the inferface is similar to skyrim.skyrim.predict for quick testing.
         """
         start_time = datetime.datetime.strptime(date + time, "%Y%m%d%H%M")
-        timestamps = [
-            start_time + datetime.timedelta(hours=i)
-            for i in range(0, lead_time + 1, time_step)
-        ]
+        timestamps = self._generate_timestamps(date, time, lead_time, time_step)
         logger.debug(
             f"Fetching CDS data array for benchmarking for {len(timestamps)} timestamps."
         )
@@ -413,7 +416,7 @@ class CDS:
         time_step: int = 6,  # in hours
         output_dir: str = OUTPUT_DIR,
         batching: Literal["daily", "monthly"] = "daily",
-    ):
+    ) -> str:
         """
         Create a dataset by generating and batching timestamps, then saving to NetCDF files.
 
@@ -439,22 +442,66 @@ class CDS:
         """
 
         # create daily slices of data for the given date
-        # -- output_dir f"{start_time}__LT{lead_time}h__TS{time_step}h"
+        # -- output_dir f"CDS__{start_time}__LT{lead_time}h__TS{time_step}h__BD
         #   -- metadata.json
-        #   -- 20240101T0000_20240101T1800.nc
-        #   -- 20240101T0000_20240101T1800.nc
+        #   -- 20240101T0000__20240101T1800.nc
+        #   -- 20240101T0000__20240101T1800.nc
         #   -- ...
 
-        start_time = datetime.datetime.strptime(date + time, "%Y%m%d%H%M")
-        logger.debug(
-            f"Creating dataset for \n"
-            f"start_time: {start_time}\n"
-            f"lead time {lead_time}h\n"
-            f"time step {time_step}h"
+        # generate hourly time stamps
+        timestamps = self._generate_timestamps(date, time, lead_time, time_step)
+
+        return self.create_dataset_from_timestamps(
+            timestamps=timestamps,
+            output_dir=output_dir,
+            batching=batching,
+        )
+
+    def create_dataset_from_timestamps(
+        self,
+        timestamps: List[datetime.datetime],
+        output_dir: str = OUTPUT_DIR,
+        batching: Literal["daily", "monthly"] = "daily",
+    ) -> str:
+        """
+        Create a dataset by batching given timestamps and saving to NetCDF files.
+
+        Parameters
+        ----------
+        timestamps : List[datetime.datetime]
+            List of datetime objects representing the timestamps.
+        output_dir : str, optional
+            The directory to save the output files (default is OUTPUT_DIR).
+        batching : {'daily', 'monthly'}, optional
+            The batching method, either "daily" or "monthly" (default is "daily").
+
+        Returns
+        -------
+        str
+            The output directory containing the created dataset.
+        """
+
+        if not timestamps:
+            raise ValueError("The timestamps list cannot be empty.")
+
+        # Sort timestamps to ensure they are in chronological order
+        timestamps = sorted(timestamps)
+
+        # Extract the start time, lead time, and time step
+        start_time = timestamps[0]
+        end_time = timestamps[-1]
+        lead_time = int((end_time - start_time).total_seconds() / 3600)
+        time_step = (
+            int((timestamps[1] - start_time).total_seconds() / 3600)
+            if len(timestamps) > 1
+            else 0
         )
 
         output_dir = os.path.join(
-            output_dir, f"{date}T{time}__LT{lead_time}h__TS{time_step}h__B{batching}"
+            output_dir,
+            f"CDS__{start_time.strftime('%Y%m%dT%H%M')}"
+            f"__LT{lead_time}h"
+            f"__TS{time_step}h__B{batching[0].upper()}",
         )
         logger.debug(f"Output directory: {output_dir}")
         if not os.path.exists(output_dir):
@@ -463,20 +510,14 @@ class CDS:
 
         metadata = {
             "channels": self.channels,
-            "date": date,
-            "time": time,
+            "start_time": start_time.strftime("%Y%m%dT%H%M"),
             "lead_time": lead_time,
             "time_step": time_step,
             "batching": batching,
+            "timestamps": {},
         }
 
-        # generate time stamps
-        timestamps = [
-            start_time + datetime.timedelta(hours=i)
-            for i in range(0, lead_time + 1, time_step)
-        ]
-
-        # batch timestamps into daily or monthly slices
+        # Batch timestamps into daily or monthly slices
         if batching == "monthly":
             timestamps_batched = self._batch_timestamps_monthly(timestamps)
         elif batching == "daily":
@@ -487,21 +528,47 @@ class CDS:
         logger.info(f"{len(timestamps_batched)} files will be created.")
         logger.info(f"Output directory: {output_dir}")
         for i, ts_batch in enumerate(timestamps_batched):
-            start_dt, end_dt = ts_batch[0], ts_batch[-1]
-            start_dt_str = start_dt.strftime("%Y%m%dT%H%M")
-            end_dt_str = end_dt.strftime("%Y%m%dT%H%M")
-            filename = os.path.join(output_dir, f"{start_dt_str}__{end_dt_str}.nc")
-            da = self.fetch_cds_dataarray(ts_batch)
-            da.to_netcdf(filename)
-            logger.info(f"Saved file: {filename}")
-            self.clear_cached_files()
+            ts_batch_str = [t.strftime("%Y%m%dT%H%M") for t in ts_batch]
+            filename = f"{ts_batch_str[0]}__{ts_batch_str[-1]}.nc"
+            output_path = os.path.join(output_dir, filename)
+            if os.path.exists(output_path):
+                logger.debug(f"File already exists: {output_path}")
+                continue
 
-        # save metadata
+            da = self.fetch_cds_dataarray(ts_batch)
+            da.to_netcdf(output_path)
+            logger.info(f"Saved file: {output_path}")
+            metadata["timestamps"][filename] = ts_batch_str
+        self.clear_cached_files()
+
+        # Save metadata
         metadata_filename = os.path.join(output_dir, "metadata.json")
         logger.debug(f"Saving metadata to {metadata_filename}")
         with open(metadata_filename, "w") as f:
-            json.dump(metadata, f)
+            json.dump(metadata, f, indent=4)
         return output_dir
+
+    def _generate_timestamps(
+        self,
+        date: str,
+        time: str,
+        lead_time: int,
+        time_step: int,
+    ) -> List[datetime.datetime]:
+        """
+        Generate timestamps for the given date, time, lead time, and time step.
+        """
+        start_time = datetime.datetime.strptime(date + time, "%Y%m%d%H%M")
+        timestamps = [
+            start_time + datetime.timedelta(hours=i)
+            for i in range(0, lead_time + 1, time_step)
+        ]
+        logger.debug(
+            f"Generated {len(timestamps)} timestamps from date={date},"
+            f"time={time}, lead_time={lead_time}, time_step={time_step}."
+        )
+
+        return timestamps
 
     def _batch_timestamps_monthly(
         self,
