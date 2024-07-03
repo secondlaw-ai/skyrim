@@ -124,7 +124,8 @@ class IFSModel:
 
     def assure_channels_exist(self, channels):
         for channel in channels:
-            assert channel in IFS_Vocabulary.VOCAB.keys()
+            if channel not in IFS_Vocabulary.VOCAB.keys():
+                raise Exception(f'Channel {channel} does not exist in the vocabulary.')
 
     @staticmethod
     def list_available_channels():

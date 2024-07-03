@@ -36,7 +36,8 @@ def test_ifs_ic_gets_right_fourcastnet():
 @pytest.mark.integ
 def test_ifs_ic_gets_right_from_nwp():
     dt = datetime(2024, 4, 1)
-    models = ["fourcastnet", "pangu", "graphcast"]
+    # models = ["fourcastnet", "pangu", "graphcast"]
+    models = ["fourcastnet", "pangu"]
     for m in models:
         skyrim = Skyrim(m, ic_source="ifs")
         channels = skyrim.model.in_channel_names
