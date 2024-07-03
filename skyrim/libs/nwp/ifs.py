@@ -353,7 +353,6 @@ class IFSModel:
             f"Request: datetime: {start_time}, channel: {channel}, levtype: {levtype}, step: {step}"
         )
         if not os.path.exists(cache_path):
-            breakpoint()
             try:
                 request = {
                     "date": start_time.strftime("%Y%m%d"),
@@ -498,7 +497,6 @@ class IFSModel:
             enumerate(self.channels), desc=f"Fetching IFS for start_time: {start_time}"
         ):
             ifs_id, ifs_levtype, ifs_level, modifier_func = IFS_Vocabulary.get(channel)
-            breakpoint()
             cache_path = self._download_ifs_channel_grib_to_cache(
                 ifs_id, ifs_levtype, ifs_level, start_time, steps
             )
