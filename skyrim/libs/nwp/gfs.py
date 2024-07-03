@@ -176,7 +176,7 @@ class GFSModel:
         self.channels = channels
         self.cached_files = []
         logger.info(f"GFS model initialized with channels: {channels}")
-        logger.debug(f"GFScache location: {self.cache}")
+        logger.debug(f"GFS cache location: {self.cache}")
 
     def assure_channels_exist(self, channels: list[str]):
         for channel in channels:
@@ -194,10 +194,8 @@ class GFSModel:
         cache_location = os.path.join(LOCAL_CACHE, "gfs")
         if not self._cache:
             cache_location = os.path.join(LOCAL_CACHE, "gfs", "tmp")
-            logger.debug(f"Using temporary cache location at {cache_location}")
         if not os.path.exists(cache_location):
             os.makedirs(cache_location)
-            logger.info(f"Created cache directory at {cache_location}")
         return cache_location
 
     @property
@@ -293,7 +291,7 @@ class GFSModel:
         logger.debug(f"Forecast start time: {start_time}")
         logger.debug(f"Forecast steps: {steps}")
         logger.debug(f"len(steps): {len(steps)}")
-        darray = self.fetch_gfs_dataarray(start_time, steps)
+        darray = self.fetch_dataarray(start_time, steps)
         if save:
             save_forecast(
                 pred=darray,
@@ -351,7 +349,7 @@ class GFSModel:
                 )
                 continue
 
-            forecast_data = self.fetch_gfs_dataarray(start_time, [lead_time])
+            forecast_data = self.fetch_dataarray(start_time, [lead_time])
             forecasts[np.datetime64(start_time)] = forecast_data
 
         return forecasts
@@ -383,7 +381,7 @@ class GFSModel:
             self.GFS_BUCKET_NAME, self._get_grib_filename(start_time, step, is_index)
         )
 
-    def fetch_gfs_dataarray(
+    def fetch_dataarray(
         self,
         start_time: datetime,
         steps: list[int] = list(range(0, 385)),

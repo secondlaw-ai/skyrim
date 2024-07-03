@@ -136,10 +136,8 @@ class IFSModel:
         cache_location = os.path.join(LOCAL_CACHE, "ifs")
         if not self._cache:
             cache_location = os.path.join(LOCAL_CACHE, "ifs", "tmp")
-            logger.debug(f"Using temporary cache location at {cache_location}")
         if not os.path.exists(cache_location):
             os.makedirs(cache_location, exist_ok=True)
-            logger.info(f"Created cache directory at {cache_location}")
         return cache_location
 
     @property
@@ -238,7 +236,7 @@ class IFSModel:
         logger.debug(f"Forecast start time: {start_time}")
         logger.debug(f"Forecast steps: {steps}")
         logger.debug(f"len(steps): {len(steps)}")
-        darray = self.fetch_ifs_dataarray(start_time, steps)
+        darray = self.fetch_dataarray(start_time, steps)
         if save:
             save_forecast(
                 pred=darray,
@@ -297,7 +295,7 @@ class IFSModel:
                 )
                 continue
 
-            forecast_data = self.fetch_ifs_dataarray(start_time, [lead_time])
+            forecast_data = self.fetch_dataarray(start_time, [lead_time])
             forecasts[np.datetime64(start_time)] = forecast_data
 
         return forecasts
@@ -306,7 +304,7 @@ class IFSModel:
         self,
         channel: str,
         levtype: str,
-        level: str | list[str],
+        level: str,
         start_time: datetime,
         step: int | list[int] = 240,
     ) -> str | None:
@@ -319,7 +317,7 @@ class IFSModel:
             The meteorological parameter to download (e.g., wind, pressure, humidity).
         levtype : str
             The level type (e.g., 'sfc' for surface or 'pl' for pressure level).
-        level : str or list of str
+        level : str
             Specific levels to download if relevant, depending on the `levtype`.
         start_time : datetime
             The starting date and time of the forecast, expressed in UTC.
@@ -346,7 +344,7 @@ class IFSModel:
         """
 
         sha = hashlib.sha256(
-            f"{channel}_{levtype}_{'_'.join(level)}_{start_time}".encode()
+            f"{channel}_{levtype}_{'_'.join(level)}_{start_time}_{step}".encode()
         )
         filename = sha.hexdigest()
         cache_path = os.path.join(self.cache, filename)
@@ -365,9 +363,11 @@ class IFSModel:
                     "step": step,
                     "target": cache_path,
                 }
-                if isinstance(level, list):
-                    request["levelist"] = ",".join(map(str, level))
-
+                if levtype == "pl":
+                    if isinstance(level, str):
+                        request["levelist"] = level
+                    else:
+                        raise ValueError(f"Invalid level type: {type(level)}")
                 result = self.client.retrieve(**request)
                 logger.debug(f"Request: datetime: {start_time}")
                 logger.debug(f"Result: datetime: {result.datetime}")
@@ -460,9 +460,9 @@ class IFSModel:
                 "Invalid start time for HRES forecast, must be 00, 06, 12 or 18"
             )
 
-    def fetch_ifs_dataarray(
+    def fetch_dataarray(
         self,
-        start_time: datetime,
+        start_time: datetime.datetime,
         steps: list[int] = [0, 3, 6],
     ) -> xr.DataArray:
         """
@@ -492,9 +492,9 @@ class IFSModel:
         if not self.available_start_time(start_time):
             logger.error(f"No IFS data available for {start_time}")
             return ifs_dataarray
-
+        logger.debug(f"Initialized ifs_dataarray with shape: {ifs_dataarray.shape}")
         for i, channel in tqdm(
-            enumerate(self.channels), desc="Fetching IFS for {start_time}"
+            enumerate(self.channels), desc=f"Fetching IFS for start_time: {start_time}"
         ):
             ifs_id, ifs_levtype, ifs_level, modifier_func = IFS_Vocabulary.get(channel)
             cache_path = self._download_ifs_channel_grib_to_cache(
@@ -509,6 +509,10 @@ class IFSModel:
             da = xr.open_dataarray(
                 cache_path, engine="cfgrib", backend_kwargs={"indexpath": ""}
             ).roll(longitude=len(self.IFS_LON) // 2, roll_coords=True)
+
+            logger.debug(f"Fetched channel: {channel}\n")
+            logger.debug(f"cache path: {cache_path}\n")
+            logger.debug(f"Fetched dataarray's shape: {da.shape}")
 
             # to properly roll the dataarray along its longitude is as follows
             # da.coords['longitude'] = (da.coords['longitude'] + 360) % 360
