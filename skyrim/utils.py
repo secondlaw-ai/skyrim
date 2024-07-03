@@ -4,6 +4,7 @@ import os
 from loguru import logger
 import numpy as np
 import datetime
+from typing import List
 
 
 def ensure_ecmwf_loaded():
@@ -45,30 +46,74 @@ def ensure_cds_loaded():
         logger.success(f"Successfully wrote CDS API key to /root/.cdsapi")
 
 
-def np_datetime64_to_datetime(time):
+def convert_datetime64_to_datetime(
+    datetime64_array: np.ndarray,
+) -> List[datetime.datetime]:
     """
-    Converts a numpy.datetime64 object or an array of numpy.datetime64 objects to datetime.datetime objects.
+    Convert a NumPy array of datetime64[ns] objects to a list of datetime.datetime objects.
 
-    Parameters:
-    - time: numpy.datetime64 object or array of numpy.datetime64 objects to be converted
+    Parameters
+    ----------
+    datetime64_array : np.ndarray
+        A NumPy array of datetime64[ns] objects.
 
-    Returns:
-    - A datetime.datetime object or a list of datetime.datetime objects
+    Returns
+    -------
+    List[datetime.datetime]
+        A list of datetime.datetime objects.
     """
+    # Convert to an array of datetime.datetime objects
+    datetime_array = datetime64_array.astype("datetime64[s]").astype(datetime.datetime)
+    # Convert to a list of datetime.datetime objects
+    return list(datetime_array)
 
-    def convert_single_time(single_time):
-        _unix = np.datetime64(0, "s")  # Unix epoch start time
-        _ds = np.timedelta64(1, "s")  # One second time delta
-        return datetime.datetime.utcfromtimestamp((single_time - _unix) / _ds)
 
-    if isinstance(time, np.datetime64):
-        return convert_single_time(time)
-    elif isinstance(time, np.ndarray) and time.dtype == "datetime64[ns]":
-        return [convert_single_time(t) for t in time]
-    else:
-        raise TypeError(
-            "The provided time must be a numpy.datetime64 object or an array of numpy.datetime64 objects"
-        )
+def convert_datetime64_to_str(
+    datetime64_array: np.ndarray, fmt: str = "%Y%m%dT%H%M"
+) -> List[str]:
+    """
+    Convert a NumPy array of datetime64[ns] objects to a list of strings in the specified format.
+
+    Parameters
+    ----------
+    datetime64_array : np.ndarray
+        A NumPy array of datetime64[ns] objects.
+    fmt : str, optional
+        The format string to use for conversion, by default '%Y%m%dT%H%M'.
+
+    Returns
+    -------
+    List[str]
+        A list of strings formatted according to the specified format.
+    """
+    # Convert to an array of datetime.datetime objects
+    datetime_array = datetime64_array.astype("datetime64[s]").astype(datetime.datetime)
+    # Convert each datetime.datetime object to the desired string format
+    datetime_str_list = [dt.strftime(fmt) for dt in datetime_array]
+    return datetime_str_list
+
+
+def convert_datetime_to_str(
+    datetime_array: List[datetime.datetime], fmt: str = "%Y%m%dT%H%M"
+) -> List[str]:
+    """
+    Convert a list of datetime.datetime objects to a list of strings in the specified format.
+
+    Parameters
+    ----------
+    datetime_array : List[datetime.datetime]
+        A list of datetime.datetime objects.
+    fmt : str, optional
+        The format string to use for conversion, by default '%Y%m%dT%H%M'.
+
+    Returns
+    -------
+    List[str]
+        A list of strings formatted according to the specified format.
+    """
+    # Convert each datetime.datetime object to the desired string format
+    datetime_str_list = [dt.strftime(fmt) for dt in datetime_array]
+    return datetime_str_list
 
 
 if __name__ == "__main__":
