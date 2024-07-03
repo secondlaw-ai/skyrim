@@ -2,6 +2,7 @@
 outputs
 notebooks/pg*.ipynb
 notebooks/*.csv
+notebooks/*.nc
 .cache.pkl
 
 ### Python ###

@@ -32,9 +32,7 @@ class GraphcastModel(GlobalModel):
         super().__init__(self.model_name, *args, **kwargs)
 
     def build_model(self):
-        return graphcast.load_time_loop_operational(
-            registry.get_model("e2mip://graphcast")
-        )
+        return graphcast.load_time_loop_operational(registry.get_model("e2mip://graphcast"))
 
     @property
     def time_step(self):
@@ -76,11 +74,9 @@ class GraphcastModel(GlobalModel):
         # len(state): 3,
         # state[0]: Timestamp('2018-01-02 06:00:00')
         # return state[1]
-        return state
+        return state[1]
 
-    def rollout(
-        self, start_time: datetime.datetime, n_steps: int = 3, save: bool = True, save_config: dict = {}
-    ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
+    def rollout(self, start_time: datetime.datetime, n_steps: int = 3, save: bool = True, save_config: dict = {}) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
         # TODO:
         pred, output_paths, source = None, [], self.ic_source
         forecast_id = save_config.get("forecast_id", generate_forecast_id())
@@ -93,7 +89,7 @@ class GraphcastModel(GlobalModel):
                 # pred[1] is the xr.DataSet that we want to save for now
                 # we should first using channel names to map this DataSet to our regular DataArray
                 output_path = save_forecast(
-                    pred[1],
+                    pred,
                     self.model_name,
                     start_time,
                     pred_time,

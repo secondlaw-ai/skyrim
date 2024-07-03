@@ -18,21 +18,18 @@ from earth2mip.initial_conditions import base
 LOCAL_CACHE = os.getenv("LOCAL_CACHE") or (os.environ["HOME"] + "/.cache/modulus")
 
 
-
 def _get_filename(time: datetime.datetime, lead_time: str, resolution: str = "0p25"):
     """
-    Derive file name from AWS Open Data. See more here for naming convention: 
+    Derive file name from AWS Open Data. See more here for naming convention:
     https://confluence.ecmwf.int/display/DAC/ECMWF+open+data%3A+real-time+forecasts+from+IFS+and+AIFS
     """
     if resolution not in {"0p4-beta", "0p25"}:
         raise Exception("Unknown resolution for IFS")
-    
-    hour = time.strftime('%Hz')
-    folder_name = 'oper' if hour in {'00z', '12z'} else 'scda' # scda=short-cut-off hi-res forecast
 
-    date_format = (
-        f"%Y%m%d/%Hz/ifs/{resolution}/{folder_name}/%Y%m%d%H%M%S-{lead_time}-{folder_name}-fc.grib2"
-    )
+    hour = time.strftime("%Hz")
+    folder_name = "oper" if hour in {"00z", "12z"} else "scda"  # scda=short-cut-off hi-res forecast
+
+    date_format = f"%Y%m%d/%Hz/ifs/{resolution}/{folder_name}/%Y%m%d%H%M%S-{lead_time}-{folder_name}-fc.grib2"
     return time.strftime(date_format)
 
 
@@ -70,16 +67,10 @@ def get_cache_file_path(path, local_cache_path: str = LOCAL_CACHE):
     try:
         os.makedirs(local_cache_path, exist_ok=True)
     except PermissionError as error:
-        logger.error(
-            "Failed to create cache folder, check permissions or set a cache"
-            + " location using the LOCAL_CACHE environment variable"
-        )
+        logger.error("Failed to create cache folder, check permissions or set a cache" + " location using the LOCAL_CACHE environment variable")
         raise error
     except OSError as error:
-        logger.error(
-            "Failed to create cache folder, set a cache"
-            + " location using the LOCAL_CACHE environment variable"
-        )
+        logger.error("Failed to create cache folder, set a cache" + " location using the LOCAL_CACHE environment variable")
         raise error
     return os.path.join(local_cache_path, filename)
 
@@ -97,15 +88,7 @@ def get(time: datetime.datetime, channels: List[str]):
         logger.debug(f"Multiple datasets loaded from ECMWF repo.")
         dataset_0h = xarray.merge(
             [
-                (
-                    l.drop_vars("heightAboveGround")
-                    if "heightAboveGround" in l.coords
-                    else (
-                        l.drop_vars("depthBelowLandLayer")
-                        if "depthBelowLandLayer" in l.coords
-                        else l
-                    )
-                )
+                (l.drop_vars("heightAboveGround") if "heightAboveGround" in l.coords else (l.drop_vars("depthBelowLandLayer") if "depthBelowLandLayer" in l.coords else l))
                 for l in loaded
             ]
         )
@@ -116,8 +99,8 @@ def get(time: datetime.datetime, channels: List[str]):
             w=dataset_0h.w,  # graphcast
             u10m=dataset_0h.u10,
             v10m=dataset_0h.v10,
-            u100m=dataset_0h.u10,
-            v100m=dataset_0h.v10,
+            u100m=dataset_0h.u100,
+            v100m=dataset_0h.v100,
             sp=dataset_0h.sp,
             t2m=dataset_0h.t2m,
             msl=dataset_0h.msl,
