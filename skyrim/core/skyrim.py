@@ -54,7 +54,7 @@ class Skyrim:
         lead_time: int = 6,
         save: bool = False,
         save_config: dict = {},
-    ) -> xr.DataArray | xr.Dataset | list[xr.DataArray | xr.Dataset] | list[str]:
+    ) -> xr.DataArray | list[xr.DataArray] | list[str]:
         """
         Predict a forecast (multiple snapshots leading to the final shapshot.)
         """
@@ -72,7 +72,7 @@ class Skyrim:
         logger.debug("Prediction completed successfully")
         return output_paths
 
-    def predictions(self, start_time: datetime.datetime, lead_time: int = 6) -> Iterator[xr.DataArray | xr.Dataset]:
+    def predictions(self, start_time: datetime.datetime, lead_time: int = 6) -> Iterator[xr.DataArray]:
         """Step through predictions"""
         for pred in self.model.predict_steps(start_time, lead_time=lead_time):
             yield wrap_prediction(self.model_names, pred)

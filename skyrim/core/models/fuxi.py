@@ -42,7 +42,7 @@ class FuxiModel(GlobalModel):
         self,
         start_time: datetime.datetime,
         initial_condition: str | Path | None = None,
-    ) -> xr.DataArray | xr.Dataset:
+    ) -> xr.DataArray:
         raise NotImplementedError
 
 

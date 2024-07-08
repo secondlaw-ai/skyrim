@@ -50,14 +50,7 @@ def generate_filename(
     pred_time: datetime: prediction time of the forecast
     ic_source: Literal["cds", "file", "ifs", "gfs"]: initial condition source
     """
-    return (
-        f"{model}"
-        + "__"
-        + f"{ic_source}__"
-        + f"{start_time.strftime('%Y%m%d_%H:%M')}"
-        + "__"
-        + f"{pred_time.strftime('%Y%m%d_%H:%M')}.nc"
-    )
+    return f"{model}" + "__" + f"{ic_source}__" + f"{start_time.strftime('%Y%m%d_%H:%M')}" + "__" + f"{pred_time.strftime('%Y%m%d_%H:%M')}.nc"
 
 
 def remote_forecast_exists(path: str):
@@ -65,13 +58,11 @@ def remote_forecast_exists(path: str):
         path += "/"
     s3_client = boto3.client("s3")
     p = urlparse(path)
-    return "Contents" in s3_client.list_objects_v2(
-        Bucket=p.netloc, Prefix=p.path[1:], MaxKeys=1
-    )
+    return "Contents" in s3_client.list_objects_v2(Bucket=p.netloc, Prefix=p.path[1:], MaxKeys=1)
 
 
 def save_forecast(
-    pred: xr.DataArray | xr.Dataset,
+    pred: xr.DataArray,
     model_name: str,
     start_time: datetime,
     pred_time: datetime,
@@ -94,9 +85,7 @@ def save_forecast(
             output_path = Path(config["output_dir"]) / forecast_id / filename
             logger.info(f"Saving outputs to {output_path}")
             if not output_path.parent.exists():
-                logger.info(
-                    f"Creating parent directory to save outputs: {output_path.parent}"
-                )
+                logger.info(f"Creating parent directory to save outputs: {output_path.parent}")
                 output_path.parent.mkdir(parents=True, exist_ok=True)
             pred.to_netcdf(output_path, engine="scipy")
         elif config["file_type"] == "zarr":
@@ -129,9 +118,7 @@ def save_forecast(
             s3.upload_fileobj(buf, bucket, output_path)
             buf.close()
         elif config["file_type"] == "zarr":
-            z_configs = config.get(
-                "zarr_store", {}
-            )  # allow overriding zarr store configs
+            z_configs = config.get("zarr_store", {})  # allow overriding zarr store configs
             fs = s3fs.S3FileSystem(anon=False)
             output_path = os.path.join(p.geturl(), forecast_id)
             if remote_forecast_exists(output_path):
@@ -154,5 +141,3 @@ def save_forecast(
             raise ValueError(f"Invalid file type. {config['file_type']} not supported.")
     logger.success(f"Results saved to: {output_path}")
     return str(output_path)
-
-

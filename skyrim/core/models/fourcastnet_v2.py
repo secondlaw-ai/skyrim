@@ -44,7 +44,7 @@ class FourcastnetV2Model(GlobalModel):
         self,
         start_time: datetime.datetime,
         initial_condition: str | Path | None = None,
-    ) -> xr.DataArray | xr.Dataset:
+    ) -> xr.DataArray:
         return run_basic_inference(
             model=self.model,
             n=1,

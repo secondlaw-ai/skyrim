@@ -75,7 +75,7 @@ class GlobalModel:
         self,
         start_time: datetime.datetime,
         initial_condition: str | Path | None = None,
-    ) -> xr.DataArray | xr.Dataset:
+    ) -> xr.DataArray:
         raise NotImplementedError
 
     def predict_steps(self, start_time: datetime.datetime, lead_time: int = 6):
@@ -89,7 +89,7 @@ class GlobalModel:
         self,
         start_time: datetime.datetime,
         n_steps: int = 3,
-    ) -> xr.DataArray | xr.Dataset | list[xr.DataArray | xr.Dataset]:
+    ) -> xr.DataArray | list[xr.DataArray]:
         pred, preds = None, []
         for n in range(n_steps):
             pred = self.predict_one_step(start_time, initial_condition=pred)
@@ -106,7 +106,7 @@ class GlobalModel:
         n_steps: int = 3,
         save: bool = True,
         save_config: dict = {},
-    ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
+    ) -> tuple[xr.DataArray, list[str]]:
         # it does not make sense to keep all the results in the memory
         # return final pred and list of paths of the saved predictions
         # TODO: add functionality to rollout from a given initial condition
@@ -133,7 +133,7 @@ class GlobalModel:
 
 class GlobalPrediction:
     filepath: Path = None
-    prediction: xr.Dataset | xr.DataArray = None
+    prediction: xr.DataArray = None
 
     def __init__(self, source):
         if isinstance(source, (str, Path)):

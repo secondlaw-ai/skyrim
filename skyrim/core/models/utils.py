@@ -37,9 +37,7 @@ def run_basic_inference(
     coords = dict(lat=model.grid.lat, lon=model.grid.lon)
     coords["channel"] = model.out_channel_names
     coords["time"] = times
-    return xr.DataArray(
-        stacked, dims=["time", "history", "channel", "lat", "lon"], coords=coords
-    )
+    return xr.DataArray(stacked, dims=["time", "history", "channel", "lat", "lon"], coords=coords)
 
 
 def estimate_pressure_hpa(elevation_m):
@@ -65,7 +63,7 @@ def perturb_initial_conditions(initial_conditions, channel, lat, lon, value):
     Perturb the initial conditions by setting a specific value for a given channel at a specific lat/lon.
 
     Parameters:
-    - initial_conditions (xr.DataArray | xr.Dataset): The initial conditions dataset to be perturbed.
+    - initial_conditions (xr.DataArray): The initial conditions dataset to be perturbed.
     - channel (str): Variable name to modify, e.g. 't2m'
     - lat (float): Latitude where the value should be set.
     - lon (float): Longitude where the value should be set.

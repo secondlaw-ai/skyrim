@@ -2,15 +2,13 @@ import datetime
 from pathlib import Path
 import xarray as xr
 from loguru import logger
-
 from earth2mip import registry
 from earth2mip.initial_conditions import cds, get_initial_condition_for_model
 import earth2mip.networks.graphcast as graphcast
 from .base import GlobalModel, GlobalPrediction
-from ...common import generate_forecast_id, save_forecast
 
 # fmt: off
-# TODO: check tp06
+# TODO: check tp06 - this is tisr? https://codes.ecmwf.int/grib/param-db/212
 CHANNELS = ["z50", "z100", "z150", "z200", "z250", "z300", "z400", "z500", "z600", "z700",
             "z850", "z925", "z1000", "q50", "q100", "q150", "q200", "q250", "q300", "q400",
             "q500", "q600", "q700", "q850", "q925", "q1000", "t50", "t100", "t150", "t200",
@@ -22,6 +20,39 @@ CHANNELS = ["z50", "z100", "z150", "z200", "z250", "z300", "z400", "z500", "z600
             "t2m", "msl","tp06",
             ]
 # fmt: on
+
+CHANNEL_MAP = [
+    ("specific_humidity", "q"),
+    ("geopotential", "z"),
+    ("temperature", "t"),
+    ("u_component_of_wind", "u"),
+    ("v_component_of_wind", "v"),
+    ("vertical_velocity", "w"),
+    ("2m_temperature", "t2m"),
+    ("10m_u_component_of_wind", "u10m"),
+    ("10m_v_component_of_wind", "v10m"),
+    ("mean_sea_level_pressure", "msl"),
+    ("toa_incident_solar_radiation", "tp06"),
+]
+
+
+def to_global_prediction(ds: xr.Dataset) -> xr.DataArray:
+    """Convert graphcast dataset to our dataarray global prediction format consistent with other models."""
+    lvar_map, sfc_map = CHANNEL_MAP[:6], CHANNEL_MAP[6:]
+    lvar_dss, sfc_dss = [], []
+    ds = ds.squeeze(dim="batch")
+    for name, code in lvar_map:
+        channels = [f"{code}{l}" for l in list(ds[name].level.values)]
+        x = ds[name]
+        x["level"] = channels
+        x = x.rename({"level": "channel"})
+        lvar_dss.append(x)
+    for name, code in sfc_map:
+        x = ds[name]
+        x["channel"] = code
+        x = x.expand_dims("channel")
+        sfc_dss.append(x)
+    return xr.concat(lvar_dss + sfc_dss, dim="channel").transpose("time", "channel", "lat", "lon")
 
 
 class GraphcastModel(GlobalModel):
@@ -50,13 +81,11 @@ class GraphcastModel(GlobalModel):
         self,
         start_time: datetime.datetime,
         initial_condition: str | Path | None = None,
-    ) -> xr.DataArray | xr.Dataset:
+    ) -> xr.DataArray:
         # TODO: initial condition
-
         # NOTE: this only works for graphcast operational model
         # some info about stepper:
         # https://github.com/NVIDIA/earth2mip/blob/86b11fe4ba2f19641802112e8b0ba6b962123130/earth2mip/time_loop.py#L114-L122
-
         self.stepper = self.model.stepper
         if initial_condition is None:
             initial_condition = get_initial_condition_for_model(
@@ -68,38 +97,8 @@ class GraphcastModel(GlobalModel):
 
         else:
             state = initial_condition
-
         state, output = self.stepper.step(state)
-        # output.shape: torch.Size([1, 83, 721, 1440])
-        # len(state): 3,
-        # state[0]: Timestamp('2018-01-02 06:00:00')
-        # return state[1]
-        return state[1]
-
-    def rollout(self, start_time: datetime.datetime, n_steps: int = 3, save: bool = True, save_config: dict = {}) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
-        # TODO:
-        pred, output_paths, source = None, [], self.ic_source
-        forecast_id = save_config.get("forecast_id", generate_forecast_id())
-        save_config.update({"forecast_id": forecast_id})
-        for n in range(n_steps):
-            # returns a state tuple
-            pred = self.predict_one_step(start_time, initial_condition=pred)
-            pred_time = start_time + self.time_step
-            if save:
-                # pred[1] is the xr.DataSet that we want to save for now
-                # we should first using channel names to map this DataSet to our regular DataArray
-                output_path = save_forecast(
-                    pred,
-                    self.model_name,
-                    start_time,
-                    pred_time,
-                    source,
-                    config=save_config,
-                )
-                start_time, source = pred_time, "file"
-                output_paths.append(output_path)
-            logger.success(f"Rollout step {n+1}/{n_steps} completed")
-        return pred, output_paths
+        return to_global_prediction(state[1])
 
 
 class GraphcastPrediction(GlobalPrediction):
