@@ -1,10 +1,15 @@
 import datetime
 import xarray as xr
+import jax.numpy as jnp
+import numpy as np
+import earth2mip.networks.graphcast as graphcast
 from pathlib import Path
 from earth2mip import registry
 from earth2mip.initial_conditions import cds, get_initial_condition_for_model
-import earth2mip.networks.graphcast as graphcast
-from .base import GlobalModel, GlobalPrediction
+from ...common import generate_forecast_id, save_forecast
+from loguru import logger
+from .base import GlobalModel
+
 
 # fmt: off
 # TODO: check tp06 - this is tisr? https://codes.ecmwf.int/grib/param-db/212
@@ -75,11 +80,13 @@ class GraphcastModel(GlobalModel):
             x["channel"] = code
             x = x.expand_dims("channel")
             sfc_dss.append(x)
-        return xr.concat(lvar_dss + sfc_dss, dim="channel").transpose(
-            "time", "channel", "lat", "lon"
+        return (
+            xr.concat(lvar_dss + sfc_dss, dim="channel")
+            .transpose("time", "channel", "lat", "lon")
+            .as_numpy()
         )
 
-    def predict_one_step(
+    def _predict_one_step(
         self,
         start_time: datetime.datetime,
         initial_condition: str | Path | None = None,
@@ -99,4 +106,50 @@ class GraphcastModel(GlobalModel):
         else:
             state = initial_condition
         state, output = self.stepper.step(state)
+        return state
+
+    def predict_steps(self, start_time: datetime.datetime, lead_time: int = 6):
+        # this OOMS
+        pred_time, state = start_time, None
+        for n in range(self.time_steps(lead_time)):
+            state = self._predict_one_step(pred_time, initial_condition=state)
+            pred_time = start_time + self.time_step
+            yield self._to_global_da(state[1]).isel(time=slice(int(bool(n)), 2))
+
+    def predict_one_step(
+        self,
+        start_time: datetime.datetime,
+        initial_condition: str | Path | None = None,
+    ) -> xr.DataArray:
+        state = self._predict_one_step(start_time, initial_condition)
         return self._to_global_da(state[1])
+
+    def rollout(
+        self,
+        start_time: datetime.datetime,
+        n_steps: int = 3,
+        save: bool = True,
+        save_config: dict = {},
+    ) -> tuple[xr.DataArray, list[str]]:
+        # it does not make sense to keep all the results in the memory
+        # return final pred and list of paths of the saved predictions
+        # TODO: add functionality to rollout from a given initial condition
+        pred, output_paths, source, preds = None, [], self.ic_source, []
+        forecast_id = save_config.get("forecast_id", generate_forecast_id())
+        save_config.update({"forecast_id": forecast_id})
+        for n in range(n_steps):
+            pred = self._predict_one_step(start_time, initial_condition=pred)
+            pred_time = start_time + self.time_step
+            if save:
+                output_path = save_forecast(
+                    self._to_global_da(pred[1]),
+                    self.model_name,
+                    start_time,
+                    pred_time,
+                    source,
+                    config=save_config,
+                )
+                output_paths.append(output_path)
+            start_time, source = pred_time, "file"
+            logger.success(f"Rollout step {n+1}/{n_steps} completed")
+        return self._to_global_da(pred[1]), output_paths

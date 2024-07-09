@@ -15,7 +15,9 @@ def adjust_lead_time(lead_time: int, steps: int = 6):
 
 
 class GlobalModel:
-    def __init__(self, model_name: str, ic_source: Literal["cds", "gfs", "ifs"] = "cds"):
+    def __init__(
+        self, model_name: str, ic_source: Literal["cds", "gfs", "ifs"] = "cds"
+    ):
         clock = time.time()
         self.model_name = model_name
         self.ic_source = ic_source
@@ -75,7 +77,7 @@ class GlobalModel:
     def predict_one_step(
         self,
         start_time: datetime.datetime,
-        initial_condition: str | Path | None = None,
+        initial_condition: str | xr.DataArray | None = None,
     ) -> xr.DataArray:
         return run_basic_inference(
             model=self.model,
@@ -284,7 +286,9 @@ class GlobalPredictionRollout:
         n_step: int | None = 1,
     ):
         # NOTE: pressure level is in hPa
-        return [pred.wind_speed(lat, lon, pressure_level, n_step) for pred in self.rollout]
+        return [
+            pred.wind_speed(lat, lon, pressure_level, n_step) for pred in self.rollout
+        ]
 
     def surface_wind_speed(
         self,

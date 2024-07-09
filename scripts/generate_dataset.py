@@ -43,7 +43,12 @@ def generate_large_forecast_dataset(
             save_forecast(
                 (pred.prediction.sel(lat=lats, lon=lons, method="nearest") if len(locations) else pred.prediction)
                 .sel(channel=channels)
-                .assign_coords(pred_start=("time", [pred_start_time for _ in range(pred.prediction.time.size)]))
+                .assign_coords(
+                    pred_start=(
+                        "time",
+                        [pred_start_time for _ in range(pred.prediction.time.size)],
+                    )
+                )
                 .set_xindex("pred_start"),
                 model,
                 start,
@@ -101,7 +106,9 @@ def generate_forecast_dataset(
 
 def generate_for_uk_farms():
     df = pd.read_csv("./notebooks/20230405_wind_generators_uk.csv")
-    locations = df.sort_values("Project Capacity (MW)", ascending=False).head(100)[["lat", "lon"]].to_records(index=False)
+    locations = (
+        df.sort_values("Project Capacity (MW)", ascending=False).head(100)[["lat", "lon"]].to_records(index=False)
+    )
     ts = lambda: datetime.now().isoformat(timespec="minutes").replace(":", "_")
     # generate 3 days for pangu and then for fourcastnet_v2
     models = ["pangu", "fourcast_v2", "fourcast"]
@@ -132,17 +139,30 @@ def generate():
     # generate 3 days for pangu and then for fourcastnet_v2
     # models = ["fourcastnet_v2", "fourcastnet", "pangu"]
     # models = ["pangu", "fourcastnet_v2", "fourcastnet"]
-    models = ["fourcastnet_v2"]
+    models = ["graphcast"]
     ic = "ifs"
     ic_start_hour = 0
     start_time = datetime(2024, 4, 4)  # march 1 has an issue in IFS with w param, double check.
     end_time = datetime(2024, 4, 6)
     lead_time = 48
-    make_xp_id = lambda model: model + "__" + f"{ts()}__{ic}__{str(start_time.date()).replace('-','')}_{str(end_time.date()).replace('-','')}"
+    make_xp_id = (
+        lambda model: model
+        + "__"
+        + f"{ts()}__{ic}__{str(start_time.date()).replace('-','')}_{str(end_time.date()).replace('-','')}"
+    )
     for m in models:
         run_id = make_xp_id(m)
         logger.debug(f"Starting run for model {m}")
-        args_ = run_id, [], start_time, end_time, lead_time, m, ic, ["u10m", "v10m", "t2m", "u1000", "v1000"]
+        args_ = (
+            run_id,
+            [],
+            start_time,
+            end_time,
+            lead_time,
+            m,
+            ic,
+            ["u10m", "v10m", "t2m", "u1000", "v1000"],
+        )
         kwargs_ = dict(ic_start_hour=ic_start_hour)
         if m != "graphcast":
             generate_forecast_dataset(*args_, **kwargs_)
