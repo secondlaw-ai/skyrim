@@ -1,7 +1,6 @@
 import datetime
-from pathlib import Path
 import xarray as xr
-from loguru import logger
+from pathlib import Path
 from earth2mip import registry
 from earth2mip.initial_conditions import cds, get_initial_condition_for_model
 import earth2mip.networks.graphcast as graphcast
@@ -36,25 +35,6 @@ CHANNEL_MAP = [
 ]
 
 
-def to_global_prediction(ds: xr.Dataset) -> xr.DataArray:
-    """Convert graphcast dataset to our dataarray global prediction format consistent with other models."""
-    lvar_map, sfc_map = CHANNEL_MAP[:6], CHANNEL_MAP[6:]
-    lvar_dss, sfc_dss = [], []
-    ds = ds.squeeze(dim="batch")
-    for name, code in lvar_map:
-        channels = [f"{code}{l}" for l in list(ds[name].level.values)]
-        x = ds[name]
-        x["level"] = channels
-        x = x.rename({"level": "channel"})
-        lvar_dss.append(x)
-    for name, code in sfc_map:
-        x = ds[name]
-        x["channel"] = code
-        x = x.expand_dims("channel")
-        sfc_dss.append(x)
-    return xr.concat(lvar_dss + sfc_dss, dim="channel").transpose("time", "channel", "lat", "lon")
-
-
 class GraphcastModel(GlobalModel):
     # TODO: check rollout implementation
     model_name = "graphcast"
@@ -63,7 +43,9 @@ class GraphcastModel(GlobalModel):
         super().__init__(self.model_name, *args, **kwargs)
 
     def build_model(self):
-        return graphcast.load_time_loop_operational(registry.get_model("e2mip://graphcast"))
+        return graphcast.load_time_loop_operational(
+            registry.get_model("e2mip://graphcast")
+        )
 
     @property
     def time_step(self):
@@ -76,6 +58,26 @@ class GraphcastModel(GlobalModel):
     @property
     def out_channel_names(self):
         return self.model.out_channel_names
+
+    def _to_global_da(self, ds: xr.Dataset) -> xr.DataArray:
+        """Convert graphcast dataset to our global dataarray (da) format consistent with other models."""
+        lvar_map, sfc_map = CHANNEL_MAP[:6], CHANNEL_MAP[6:]
+        lvar_dss, sfc_dss = [], []
+        ds = ds.squeeze(dim="batch")
+        for name, code in lvar_map:
+            channels = [f"{code}{l}" for l in list(ds[name].level.values)]
+            x = ds[name]
+            x["level"] = channels
+            x = x.rename({"level": "channel"})
+            lvar_dss.append(x)
+        for name, code in sfc_map:
+            x = ds[name]
+            x["channel"] = code
+            x = x.expand_dims("channel")
+            sfc_dss.append(x)
+        return xr.concat(lvar_dss + sfc_dss, dim="channel").transpose(
+            "time", "channel", "lat", "lon"
+        )
 
     def predict_one_step(
         self,
@@ -94,24 +96,7 @@ class GraphcastModel(GlobalModel):
                 time=start_time,
             )
             state = self.stepper.initialize(initial_condition, start_time)
-
         else:
             state = initial_condition
         state, output = self.stepper.step(state)
-        return to_global_prediction(state[1])
-
-
-class GraphcastPrediction(GlobalPrediction):
-    # TODO: to be able to use the same GlobalPrediction interface, we need to map graph
-    def __init__(self, source):
-        if isinstance(source, str):
-            self.filepath = source
-            self.prediction = xr.open_dataset(source).squeeze()
-
-        elif isinstance(source, xr.Dataset) or isinstance(source, xr.DataArray):
-            self.filepath = None
-            self.prediction = source.squeeze()  # get rid of the dimensions with size 1
-        self.model_name = "graphcast"
-
-    def channel(self):
-        raise NotImplementedError
+        return self._to_global_da(state[1])

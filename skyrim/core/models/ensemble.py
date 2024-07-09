@@ -4,18 +4,16 @@ from loguru import logger
 import xarray as xr
 from .base import GlobalPrediction
 from ...common import OUTPUT_DIR
-from . import MODEL_FACTORY
+from ..models import MODELS
 
 
 class GlobalEnsemble:
     def __init__(self, model_names):
         # validate model names against a predefined factory dictionary
 
-        if not all(name in MODEL_FACTORY for name in model_names):
-            missing_models = [name for name in model_names if name not in MODEL_FACTORY]
-            raise ValueError(
-                f"Models {missing_models} are not available in MODEL_FACTORY."
-            )
+        if not all(name in MODELS for name in model_names):
+            missing_models = [name for name in model_names if name not in MODELS]
+            raise ValueError(f"Models {missing_models} are not available in MODELS.")
         self.model_names = model_names
         self.common_channels = None
         self._model = None
@@ -32,7 +30,7 @@ class GlobalEnsemble:
         """Load the specified model into GPU memory."""
 
         logger.debug(f"Loading {model_name} model.")
-        self._model = MODEL_FACTORY[model_name][0]()
+        self._model = MODELS[model_name]()
         self._model.model.to("cuda")
         if self.common_channels is None:
             self.common_channels = set(self._model.out_channel_names)

@@ -1,11 +1,4 @@
-import datetime
-from pathlib import Path
-import xarray as xr
-
-from earth2mip import registry
-from earth2mip.initial_conditions import cds
-from .base import GlobalModel, GlobalPrediction
-from .utils import run_basic_inference
+from .base import GlobalModel
 
 # fmt: off
 CHANNELS = ['Z50', 'Z100', 'Z150', 'Z200', 'Z250', 'Z300', 'Z400', 'Z500', 'Z600', 'Z700', 'Z850', 'Z925', 'Z1000', 
@@ -37,16 +30,3 @@ class FuxiModel(GlobalModel):
     @property
     def out_channel_names(self):
         return self.model.out_channel_names
-
-    def predict_one_step(
-        self,
-        start_time: datetime.datetime,
-        initial_condition: str | Path | None = None,
-    ) -> xr.DataArray:
-        raise NotImplementedError
-
-
-class FuxiPrediction(GlobalPrediction):
-    def __init__(self, source):
-        super().__init__(source)
-        self.model_name = "fuxi"
