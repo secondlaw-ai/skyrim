@@ -1,7 +1,7 @@
 import time
 import datetime
 import xarray as xr
-from typing import Literal
+from typing import Literal, Callable
 from pathlib import Path
 from loguru import logger
 from earth2mip import schema
