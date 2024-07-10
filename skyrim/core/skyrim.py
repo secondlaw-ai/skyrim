@@ -3,18 +3,12 @@ import xarray as xr
 from dotenv import load_dotenv
 from loguru import logger
 from typing import Literal, Iterator
-from pathlib import Path
-from .models import MODEL_FACTORY
-from .models.base import GlobalModel, adjust_lead_time
-from .models.ensemble import GlobalEnsemblePrediction, GlobalEnsemble
+from .models import MODELS
+from .models.base import GlobalModel, adjust_lead_time, GlobalPrediction
+from .models.ensemble import GlobalEnsemble
+
 
 load_dotenv()
-
-
-def wrap_prediction(model_names, source):
-    if len(model_names) > 1:
-        return GlobalEnsemblePrediction(source)
-    return MODEL_FACTORY[model_names[0]][1](source)
 
 
 class Skyrim:
@@ -25,28 +19,27 @@ class Skyrim:
     ):
         # TODO: device of the model should be configurable
 
-        missing_names = [name for name in model_names if name not in MODEL_FACTORY]
+        missing_names = [name for name in model_names if name not in MODELS]
         if missing_names:
             raise ValueError(f"Invalid model name(s): {missing_names}")
-
         self.model_names = model_names
         self.ic_source = ic_source
         self.model: GlobalEnsemble | GlobalModel
-
         if len(model_names) > 1:
             logger.info(f"Initializing ensemble model with {model_names}")
             self.model = GlobalEnsemble(model_names)
-
         else:
-            self.model = MODEL_FACTORY[model_names[0]][0](ic_source=ic_source)
-        logger.debug(f"Initialized {self.model} model with initial conditions from {ic_source}")
+            self.model = MODELS[model_names[0]](ic_source=ic_source)
+        logger.debug(
+            f"Initialized {self.model} model with initial conditions from {ic_source}"
+        )
 
     def __repr__(self) -> str:
         return f"Skyrim(models={self.model_names},ic={self.ic_source})"
 
     @staticmethod
     def list_available_models():
-        return list(MODEL_FACTORY.keys())
+        return list(MODELS.keys())
 
     def forecast(
         self,
@@ -54,7 +47,7 @@ class Skyrim:
         lead_time: int = 6,
         save: bool = False,
         save_config: dict = {},
-    ) -> xr.DataArray | xr.Dataset | list[xr.DataArray | xr.Dataset] | list[str]:
+    ) -> xr.DataArray | list[xr.DataArray] | list[str]:
         """
         Predict a forecast (multiple snapshots leading to the final shapshot.)
         """
@@ -64,18 +57,23 @@ class Skyrim:
         logger.debug(f"Number of prediction steps: {n_steps}")
         start_time = start_time.replace(second=0, microsecond=0)
         if not save:
-            return wrap_prediction(
-                self.model_names,
+            return GlobalPrediction(
                 self.model.predict_all_steps(start_time=start_time, n_steps=n_steps),
+                model_name=self.model_names,
             )
-        _, output_paths = self.model.rollout(start_time=start_time, n_steps=n_steps, save=True, save_config=save_config)
+
+        _, output_paths = self.model.rollout(
+            start_time=start_time, n_steps=n_steps, save=True, save_config=save_config
+        )
         logger.debug("Prediction completed successfully")
         return output_paths
 
-    def predictions(self, start_time: datetime.datetime, lead_time: int = 6) -> Iterator[xr.DataArray | xr.Dataset]:
+    def predictions(
+        self, start_time: datetime.datetime, lead_time: int = 6
+    ) -> Iterator[xr.DataArray]:
         """Step through predictions"""
         for pred in self.model.predict_steps(start_time, lead_time=lead_time):
-            yield wrap_prediction(self.model_names, pred)
+            yield GlobalPrediction(pred, model_name=self.model_names)
 
     def predict(
         self,
@@ -112,4 +110,4 @@ class Skyrim:
         )
         # You might want to do something with pred or output_paths here
         logger.debug("Prediction completed successfully")
-        return wrap_prediction(self.model_names, pred), output_paths
+        return GlobalPrediction(pred, model_name=self.model_names), output_paths

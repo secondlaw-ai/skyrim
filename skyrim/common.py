@@ -6,23 +6,16 @@ import boto3
 import s3fs
 import os
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Callable
 from pathlib import Path
 from loguru import logger
 from urllib.parse import urlparse
 from io import BytesIO
-
+from dataclasses import dataclass, field
 
 AVAILABLE_MODELS = ["pangu", "fourcastnet", "fourcastnet_v2", "graphcast", "dlwp"]
 LOCAL_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "skyrim")
-
 OUTPUT_DIR = str(Path.cwd() / "outputs")
-
-DEFAULT_SAVE_CONFIG = {
-    "output_dir": OUTPUT_DIR,
-    "file_type": "netcdf",
-    "filter_vars": [],
-}
 
 
 def generate_forecast_id(length=10):
@@ -34,6 +27,20 @@ def generate_forecast_id(length=10):
     digest = hash_object.digest()
     base58_encoded = base58.b58encode(digest)
     return base58_encoded.decode()[:length]
+
+
+@dataclass
+class SaveConfig:
+    forecast_id: str = ""
+    output_dir: str = OUTPUT_DIR
+    file_type: str = "netcdf"
+    filter_vars: tuple[str] = ()
+    mapping_func: Callable[[xr.DataArray], xr.DataArray] = lambda x: x
+    zarr_store_config: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        if not self.forecast_id:
+            self.forecast_id = generate_forecast_id()
 
 
 def generate_filename(
@@ -71,7 +78,7 @@ def remote_forecast_exists(path: str):
 
 
 def save_forecast(
-    pred: xr.DataArray | xr.Dataset,
+    pred: xr.DataArray,
     model_name: str,
     start_time: datetime,
     pred_time: datetime,
@@ -79,19 +86,19 @@ def save_forecast(
     config: dict = {},
 ):
     requested_file_type = config.get("file_type")
-    config = {**DEFAULT_SAVE_CONFIG, **config}
-    forecast_id = config.get("forecast_id", generate_forecast_id())
-    p = urlparse(config["output_dir"])
+    config = SaveConfig(**config)
+    p = urlparse(config.output_dir)
     target = "s3" if p.scheme == "s3" else "local"
     if target == "s3" and (not requested_file_type):
-        config["file_type"] = "zarr"
+        config.file_type = "zarr"
 
-    pred = pred[config["filter_vars"]] if len(config["filter_vars"]) else pred
+    pred = config.mapping_func(pred)
+    pred = pred[config.filter_vars] if len(config.filter_vars) else pred
 
     if target == "local":
-        if config["file_type"] == "netcdf":
+        if config.file_type == "netcdf":
             filename = generate_filename(model_name, start_time, pred_time, source)
-            output_path = Path(config["output_dir"]) / forecast_id / filename
+            output_path = Path(config.output_dir) / config.forecast_id / filename
             logger.info(f"Saving outputs to {output_path}")
             if not output_path.parent.exists():
                 logger.info(
@@ -99,8 +106,8 @@ def save_forecast(
                 )
                 output_path.parent.mkdir(parents=True, exist_ok=True)
             pred.to_netcdf(output_path, engine="scipy")
-        elif config["file_type"] == "zarr":
-            output_path = str(Path(config["output_dir"]) / forecast_id)
+        elif config.file_type == "zarr":
+            output_path = str(Path(config.output_dir) / config.forecast_id)
             if Path(output_path).exists():
                 pred.to_zarr(
                     output_path,
@@ -116,31 +123,28 @@ def save_forecast(
                     consolidated=True,
                 )
         else:
-            raise ValueError(f"Invalid file type. {config['file_type']} not supported.")
+            raise ValueError(f"Invalid file type. {config.file_type} not supported.")
     elif target == "s3":
         bucket = p.netloc
-        if config["file_type"] == "netcdf":
+        if config.file_type == "netcdf":
             filename = generate_filename(model_name, start_time, pred_time, source)
-            output_path = os.path.join(p.geturl(), forecast_id, filename)
+            output_path = os.path.join(p.geturl(), config.forecast_id, filename)
             s3 = boto3.client("s3")
             buf = BytesIO()
             pred.to_netcdf(buf, engine="scipy")
             buf.seek(0)
             s3.upload_fileobj(buf, bucket, output_path)
             buf.close()
-        elif config["file_type"] == "zarr":
-            z_configs = config.get(
-                "zarr_store", {}
-            )  # allow overriding zarr store configs
+        elif config.file_type == "zarr":
             fs = s3fs.S3FileSystem(anon=False)
-            output_path = os.path.join(p.geturl(), forecast_id)
+            output_path = os.path.join(p.geturl(), config.forecast_id)
             if remote_forecast_exists(output_path):
                 pred.to_zarr(
                     fs.get_mapper(output_path),
                     append_dim="time",
                     mode="a",
                     consolidated=True,
-                    **z_configs,
+                    **config.zarr_store_config,
                 )
             else:
                 # cant use append dim.
@@ -148,11 +152,9 @@ def save_forecast(
                     fs.get_mapper(output_path),
                     mode="w",
                     consolidated=True,
-                    **z_configs,
+                    **config.zarr_store_config,
                 )
         else:
-            raise ValueError(f"Invalid file type. {config['file_type']} not supported.")
+            raise ValueError(f"Invalid file type. {config.file_type} not supported.")
     logger.success(f"Results saved to: {output_path}")
     return str(output_path)
-
-

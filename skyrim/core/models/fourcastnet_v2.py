@@ -39,22 +39,3 @@ class FourcastnetV2Model(GlobalModel):
     @property
     def out_channel_names(self):
         return self.model.out_channel_names
-
-    def predict_one_step(
-        self,
-        start_time: datetime.datetime,
-        initial_condition: str | Path | None = None,
-    ) -> xr.DataArray | xr.Dataset:
-        return run_basic_inference(
-            model=self.model,
-            n=1,
-            data_source=self.data_source,
-            time=start_time,
-            x=initial_condition,
-        )
-
-
-class FourcastnetV2Prediction(GlobalPrediction):
-    def __init__(self, source):
-        super().__init__(source)
-        self.model_name = "fourcastnet_v2"
