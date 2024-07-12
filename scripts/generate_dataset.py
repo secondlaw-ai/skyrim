@@ -107,6 +107,7 @@ def generate_forecast_dataset(
         pred = model.forecast(
             start_time=start,
             lead_time=lead_time,
+            channels=channels,
         )
         save_forecast(
             (
@@ -114,7 +115,6 @@ def generate_forecast_dataset(
                 if len(locations)
                 else pred.prediction
             )
-            .sel(channel=channels)
             .assign_coords(
                 pred_start=("time", [start for _ in range(pred.prediction.time.size)])
             )
@@ -184,6 +184,7 @@ def generate():
     )
     for m in models:
         run_id = make_xp_id(m)
+        logger.debug(f"Run ID: {run_id}")
         logger.debug(f"Starting run for model {m}")
         args_ = (
             run_id,

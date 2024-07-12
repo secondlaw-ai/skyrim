@@ -173,7 +173,7 @@ class CDS:
         t = self._ymdt_to_datetime(year, month, day, time)
         assert isinstance(t, list), "UPSY."
         assert isinstance(t[0], datetime.datetime), "UPSY."
-        cds_dataarray = self.fetch_cds_dataarray(t)
+        cds_dataarray = self.fetch_dataarray(t)
         return cds_dataarray
 
     def assure_channels_exist(self, channels: list[str]):
@@ -223,7 +223,7 @@ class CDS:
         else:
             logger.debug(f"Cache directory not found: {cache_dir}")
 
-    def fetch_cds_dataarray(
+    def fetch_dataarray(
         self,
         time: datetime.datetime | list[datetime.datetime],
     ):
@@ -257,7 +257,9 @@ class CDS:
             },
         )
         logger.debug(f"Initialized cds_dataarray with shape: {cds_dataarray.shape}")
-        for i, channel in enumerate(self.channels):
+        for i, channel in tqdm(
+            enumerate(self.channels), desc="Fetching channels", total=len(self.channels)
+        ):
             cds_id, cds_levtype, cds_level = CDS_Vocabulary.get(channel)
             cache_path = self._download_cds_grib_to_cache(
                 time=time, variable=cds_id, levtype=cds_levtype, level=cds_level
@@ -406,7 +408,7 @@ class CDS:
         logger.debug(
             f"Fetching CDS data array for benchmarking for {len(timestamps)} timestamps."
         )
-        return self.fetch_cds_dataarray(timestamps)
+        return self.fetch_dataarray(timestamps)
 
     def create_dataset(
         self,
@@ -535,7 +537,7 @@ class CDS:
                 logger.debug(f"File already exists: {output_path}")
                 continue
 
-            da = self.fetch_cds_dataarray(ts_batch)
+            da = self.fetch_dataarray(ts_batch)
             da.to_netcdf(output_path)
             logger.info(f"Saved file: {output_path}")
             metadata["timestamps"][filename] = ts_batch_str

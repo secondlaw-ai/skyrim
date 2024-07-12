@@ -1,7 +1,7 @@
 import time
 import datetime
 import xarray as xr
-from typing import Literal, Callable
+from typing import Literal, Callable, List
 from pathlib import Path
 from loguru import logger
 from earth2mip import schema
@@ -10,8 +10,9 @@ from ...common import generate_forecast_id, save_forecast
 from .utils import run_basic_inference
 
 
-def adjust_lead_time(lead_time: int, steps: int = 6):
-    return max(steps, (lead_time // steps) * steps)
+def adjust_lead_time(lead_time: int, step_size: int = 6):
+    """Adjust lead time to the nearest multiple of step_size"""
+    return max(step_size, (lead_time // step_size) * step_size)
 
 
 class GlobalModel:
@@ -57,7 +58,7 @@ class GlobalModel:
 
     def time_steps(self, lead_time: int):
         """Calculate time steps given lead time in h"""
-        lead_time = adjust_lead_time(lead_time, steps=6)
+        lead_time = adjust_lead_time(lead_time, step_size=6)
         logger.debug(f"Lead time adjusted to nearest multiple of 6: {lead_time} hours")
         n_steps = int(lead_time // (self.model.time_step.total_seconds() / 3600))
         logger.debug(f"Number of prediction steps: {n_steps}")
@@ -79,6 +80,7 @@ class GlobalModel:
         start_time: datetime.datetime,
         initial_condition: str | xr.DataArray | None = None,
     ) -> xr.DataArray:
+        # if initial_condition is None, it is fetched from the self.ic_source
         return run_basic_inference(
             model=self.model,
             n=1,
@@ -87,29 +89,30 @@ class GlobalModel:
             x=initial_condition,
         )
 
-    def predict_steps(self, start_time: datetime.datetime, lead_time: int = 6):
-        pred_time, pred = start_time, None
-        for n in range(self.time_steps(lead_time)):
-            pred = self.predict_one_step(pred_time, initial_condition=pred).isel(
-                time=slice(int(bool(n)), 2)
-            )
-            pred_time = start_time + self.time_step
-            yield pred
-
-    def predict_all_steps(
+    def forecast(
         self,
         start_time: datetime.datetime,
         n_steps: int = 3,
-    ) -> xr.DataArray | list[xr.DataArray]:
-        pred, preds = None, []
-        for n in range(n_steps):
-            pred = self.predict_one_step(start_time, initial_condition=pred)
-            pred_time = start_time + self.time_step
-            preds.append(pred.isel(time=1) if n > 0 else pred)
-            start_time = pred_time
-            logger.success(f"Rollout step {n+1}/{n_steps} completed")
-        pred = xr.concat(preds, dim="time")
-        return pred
+        channels: List[str] = [],
+    ):
+        """
+        Return full concated forecast for the channels of interest
+        i.e., for all steps starting from the ic as xr.DataArray
+        if channels is empty, return all channels
+
+        NOTE:   expect minor output discrapancies between this method and rollout.
+                for some models, there are other different models for different lead times,
+                e.g. pangu6, pangu24
+        """
+
+        da = run_basic_inference(
+            model=self.model,
+            n=n_steps,
+            data_source=self.data_source,
+            time=start_time,
+            x=None,
+        )
+        return da.sel(channel=channels) if channels else da
 
     def rollout(
         self,
@@ -118,10 +121,9 @@ class GlobalModel:
         save: bool = True,
         save_config: dict = {},
     ) -> tuple[xr.DataArray, list[str]]:
-        # it does not make sense to keep all the results in the memory
-        # return final pred and list of paths of the saved predictions
+        # return final prediction and paths of the intermediate predictions
         # TODO: add functionality to rollout from a given initial condition
-        pred, output_paths, source, preds = None, [], self.ic_source, []
+        pred, output_paths, source = None, [], self.ic_source
         forecast_id = save_config.get("forecast_id", generate_forecast_id())
         save_config.update({"forecast_id": forecast_id})
         for n in range(n_steps):

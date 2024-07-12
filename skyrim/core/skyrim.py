@@ -2,7 +2,7 @@ import datetime
 import xarray as xr
 from dotenv import load_dotenv
 from loguru import logger
-from typing import Literal, Iterator
+from typing import Literal
 from .models import MODELS
 from .models.base import GlobalModel, adjust_lead_time, GlobalPrediction
 from .models.ensemble import GlobalEnsemble
@@ -41,40 +41,24 @@ class Skyrim:
     def list_available_models():
         return list(MODELS.keys())
 
+    
     def forecast(
         self,
         start_time: datetime.datetime,
-        lead_time: int = 6,
-        save: bool = False,
-        save_config: dict = {},
-    ) -> xr.DataArray | list[xr.DataArray] | list[str]:
+        n_steps: int = 4, # 24 hours if time_step is 6 hours
+        channels: list[str] = [],
+    ) -> xr.DataArray: 
         """
-        Predict a forecast (multiple snapshots leading to the final shapshot.)
+        Return full concatenated forecast for the channels of interest.
+        i.e., for all steps starting from the ic as xr.DataArray.
+        
+        Easier to use for downstream tasks.
         """
-        lead_time = adjust_lead_time(lead_time, steps=6)
-        logger.debug(f"Lead time adjusted to nearest multiple of 6: {lead_time} hours")
-        n_steps = int(lead_time // (self.model.time_step.total_seconds() / 3600))
+        logger.debug(f"Model time step: {self.model.time_step.total_seconds() / 3600} hours")
         logger.debug(f"Number of prediction steps: {n_steps}")
         start_time = start_time.replace(second=0, microsecond=0)
-        if not save:
-            return GlobalPrediction(
-                self.model.predict_all_steps(start_time=start_time, n_steps=n_steps),
-                model_name=self.model_names,
-            )
-
-        _, output_paths = self.model.rollout(
-            start_time=start_time, n_steps=n_steps, save=True, save_config=save_config
-        )
-        logger.debug("Prediction completed successfully")
-        return output_paths
-
-    def predictions(
-        self, start_time: datetime.datetime, lead_time: int = 6
-    ) -> Iterator[xr.DataArray]:
-        """Step through predictions"""
-        for pred in self.model.predict_steps(start_time, lead_time=lead_time):
-            yield GlobalPrediction(pred, model_name=self.model_names)
-
+        return self.model.forecast(start_time=start_time, n_steps=n_steps, channels=channels)
+    
     def predict(
         self,
         date: str,  # YYYMMDD, e.g. 20180101
@@ -84,7 +68,7 @@ class Skyrim:
         save_config: dict = {},
     ):
         """
-        Predict a single snapshot, optionally save all intermediary step snapshots.
+        Predict a single lead time snapshot, optionally save all intermediary step snapshots.
         """
         year = int(date[:4])
         month = int(date[4:6])
@@ -94,7 +78,7 @@ class Skyrim:
         start_time = datetime.datetime(year, month, day, hour, minute)
 
         # Adjust lead_time to nearest multiple of 6
-        lead_time = adjust_lead_time(lead_time, steps=6)
+        lead_time = adjust_lead_time(lead_time, step_size=6)
         logger.debug(f"Lead time adjusted to nearest multiple of 6: {lead_time} hours")
 
         # Calculate n_steps by dividing lead_time by the model's time_step

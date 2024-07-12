@@ -10,6 +10,14 @@ from .utils import run_basic_inference
 
 
 class DLWPModel(GlobalModel):
+    """
+    n_history_levels: int = 2
+    grid.lat: list of length 721, [90, 89.75, 89.50, ..., -89.75, -90]
+    grid.lon: list of length 1440, [0.0, 0.25, ..., 359.75]
+    in_channel_names: list of length 7, ['t850', 'z1000', 'z700', 'z500', 'z300', 'tcwv', 't2m']
+    out_channel_names: list of length 7, ['t850', 'z1000', 'z700', 'z500', 'z300', 'tcwv', 't2m']
+    """
+    
     model_name = "dlwp"
 
     def __init__(self, *args, **kwargs):

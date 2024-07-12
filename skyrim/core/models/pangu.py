@@ -28,6 +28,13 @@ class PanguModel(GlobalModel):
 
     Parameters:
     - model_name (str): Name of the model, default is 'pangu'.
+    
+    n_history_levels: int = 1
+    grid.lat: list of length 721, [90, 89.75, 89.50, ..., -89.75, -90]
+    grid.lon: list of length 1440, [0.0, 0.25, ..., 359.75]
+    in_channel_names: list of length 69, ["z1000", "z925", "z850", "z700", "z600", ..., "t2m"] 
+    out_channel_names: list of length 69, ["z1000", "z925", "z850", "z700", "z600", ..., "t2m"] 
+  
     """
 
     model_name = "pangu"

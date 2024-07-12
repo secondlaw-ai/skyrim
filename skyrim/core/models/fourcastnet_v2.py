@@ -20,6 +20,14 @@ CHANNELS = [ "u10m", "v10m", "u100m", "v100m", "t2m", "sp", "msl", "tcwv", "u50"
     ]
 # fmt: on
 class FourcastnetV2Model(GlobalModel):
+    """
+    n_history_levels: int = 1
+    grid.lat: list of length 721, [90, 89.75, 89.50, ..., -89.75, -90]
+    grid.lon: list of length 1440, [0.0, 0.25, ..., 359.75]
+    in_channel_names: list of length 73, ['u10m', 'v10m', 'u100m', 'v100m', ..., 'r1000']
+    out_channel_names: list of length 73, ['u10m', 'v10m', 'u100m', 'v100m', ..., 'r1000']
+    """
+
     model_name = "fourcastnet_v2"
 
     def __init__(self, *args, **kwargs):

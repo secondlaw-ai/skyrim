@@ -1,3 +1,4 @@
+from typing import List
 import datetime
 import xarray as xr
 import jax.numpy as jnp
@@ -80,19 +81,22 @@ class GraphcastModel(GlobalModel):
             x["channel"] = code
             x = x.expand_dims("channel")
             sfc_dss.append(x)
-        return (
+
+        global_da = (
             xr.concat(lvar_dss + sfc_dss, dim="channel")
             .transpose("time", "channel", "lat", "lon")
             .as_numpy()
         )
+        global_da.name = None
+        return global_da
 
     def _predict_one_step(
         self,
         start_time: datetime.datetime,
-        initial_condition: str | Path | None = None,
+        initial_condition: tuple | None = None,
     ) -> xr.DataArray:
         # TODO: initial condition
-        # NOTE: this only works for graphcast operational model
+        # NOTE: this only supports graphcast operational model
         # some info about stepper:
         # https://github.com/NVIDIA/earth2mip/blob/86b11fe4ba2f19641802112e8b0ba6b962123130/earth2mip/time_loop.py#L114-L122
         self.stepper = self.model.stepper
@@ -102,27 +106,40 @@ class GraphcastModel(GlobalModel):
                 data_source=self.data_source,
                 time=start_time,
             )
+
             state = self.stepper.initialize(initial_condition, start_time)
+            logger.debug(f"IC fetched - state[0]: {state[0]}")
+            # state : with lenght 3
+            # state[0] Timestamp('2024-05-01 00:00:00')
+            # state[1] <xarray.Dataset>  time: 2, level: 13, batch: 1, lat: 721, lon: 1440
+            # state[2] Array([0, 0], dtype=uint32)
         else:
             state = initial_condition
         state, output = self.stepper.step(state)
+        logger.debug(f"state[0]: {state[0]}")
         return state
 
-    def predict_steps(self, start_time: datetime.datetime, lead_time: int = 6):
-        # this OOMS
-        pred_time, state = start_time, None
-        for n in range(self.time_steps(lead_time)):
-            state = self._predict_one_step(pred_time, initial_condition=state)
-            pred_time = start_time + self.time_step
-            yield self._to_global_da(state[1]).isel(time=slice(int(bool(n)), 2))
-
-    def predict_one_step(
+    def forecast(
         self,
         start_time: datetime.datetime,
-        initial_condition: str | Path | None = None,
+        n_steps: int = 4,
+        channels: List[str] = [],
     ) -> xr.DataArray:
-        state = self._predict_one_step(start_time, initial_condition)
-        return self._to_global_da(state[1])
+        times = [start_time + i * self.time_step for i in range(n_steps + 1)]
+        state, das = None, []
+        for n in range(n_steps):
+            state = self._predict_one_step(start_time, initial_condition=state)
+            logger.success(f"Forecast step {n+1}/{n_steps} completed")
+
+            da = self._to_global_da(
+                state[1] if n == 0 else state[1].isel(time=-1).expand_dims("time")
+            )
+            if channels:
+                da = da.sel(channel=channels)
+            das.append(da)
+        # re-set the time coords: as graphcast by default holds delta_t's
+        # prediction, i.e. current state, timestamp value is hold at state[0]
+        return xr.concat(das, dim="time").assign_coords(time=times)
 
     def rollout(
         self,
@@ -134,7 +151,7 @@ class GraphcastModel(GlobalModel):
         # it does not make sense to keep all the results in the memory
         # return final pred and list of paths of the saved predictions
         # TODO: add functionality to rollout from a given initial condition
-        pred, output_paths, source, preds = None, [], self.ic_source, []
+        pred, output_paths, source = None, [], self.ic_source
         forecast_id = save_config.get("forecast_id", generate_forecast_id())
         save_config.update({"forecast_id": forecast_id})
         for n in range(n_steps):

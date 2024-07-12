@@ -12,6 +12,10 @@ CHANNELS = ["u10m", "v10m", "t2m", "sp", "msl", "t850", "u1000", "v1000", "z1000
 
 
 class FourcastnetModel(GlobalModel):
+    """
+    NOTE: its grid does not include south pole
+        https://github.com/NVIDIA/earth2mip/blob/86b11fe4ba2f19641802112e8b0ba6b962123130/earth2mip/networks/fcn.py#L67
+    """
     model_name = "fourcastnet"
 
     def __init__(self, *args, **kwargs):
