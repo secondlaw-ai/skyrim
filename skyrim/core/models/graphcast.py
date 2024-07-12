@@ -151,6 +151,8 @@ class GraphcastModel(GlobalModel):
         # it does not make sense to keep all the results in the memory
         # return final pred and list of paths of the saved predictions
         # TODO: add functionality to rollout from a given initial condition
+        times = [start_time + i * self.time_step for i in range(n_steps + 1)]
+
         pred, output_paths, source = None, [], self.ic_source
         forecast_id = save_config.get("forecast_id", generate_forecast_id())
         save_config.update({"forecast_id": forecast_id})
@@ -159,7 +161,9 @@ class GraphcastModel(GlobalModel):
             pred_time = start_time + self.time_step
             if save:
                 output_path = save_forecast(
-                    self._to_global_da(pred[1]),
+                    self._to_global_da(pred[1]).assign_coords(
+                        time=[start_time, pred_time]
+                    ),
                     self.model_name,
                     start_time,
                     pred_time,
@@ -169,4 +173,5 @@ class GraphcastModel(GlobalModel):
                 output_paths.append(output_path)
             start_time, source = pred_time, "file"
             logger.success(f"Rollout step {n+1}/{n_steps} completed")
-        return self._to_global_da(pred[1]), output_paths
+        # re-set the time coords: as graphcast by default holds delta_t's
+        return self._to_global_da(pred[1]).assign_coords(time=times[-2:]), output_paths
