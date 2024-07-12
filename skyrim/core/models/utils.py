@@ -13,7 +13,6 @@ def run_basic_inference(
     data_source: Any,
     time: datetime,
     x: str | xr.DataArray | None = None,
-    channels: list[str] = [],
 ):
     """Run a basic inference"""
     if x is None:
