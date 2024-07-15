@@ -1,20 +1,24 @@
 import time
 import datetime
 import xarray as xr
-from typing import Literal
+from typing import Literal, Callable, List
 from pathlib import Path
 from loguru import logger
 from earth2mip import schema
 from ...libs.ic import get_data_source
 from ...common import generate_forecast_id, save_forecast
+from .utils import run_basic_inference
 
 
-def adjust_lead_time(lead_time: int, steps: int = 6):
-    return max(steps, (lead_time // steps) * steps)
+def adjust_lead_time(lead_time: int, step_size: int = 6):
+    """Adjust lead time to the nearest multiple of step_size"""
+    return max(step_size, (lead_time // step_size) * step_size)
 
 
 class GlobalModel:
-    def __init__(self, model_name: str, ic_source: Literal["cds", "gfs", "ifs"] = "cds"):
+    def __init__(
+        self, model_name: str, ic_source: Literal["cds", "gfs", "ifs"] = "cds"
+    ):
         clock = time.time()
         self.model_name = model_name
         self.ic_source = ic_source
@@ -54,7 +58,7 @@ class GlobalModel:
 
     def time_steps(self, lead_time: int):
         """Calculate time steps given lead time in h"""
-        lead_time = adjust_lead_time(lead_time, steps=6)
+        lead_time = adjust_lead_time(lead_time, step_size=6)
         logger.debug(f"Lead time adjusted to nearest multiple of 6: {lead_time} hours")
         n_steps = int(lead_time // (self.model.time_step.total_seconds() / 3600))
         logger.debug(f"Number of prediction steps: {n_steps}")
@@ -74,31 +78,41 @@ class GlobalModel:
     def predict_one_step(
         self,
         start_time: datetime.datetime,
-        initial_condition: str | Path | None = None,
-    ) -> xr.DataArray | xr.Dataset:
-        raise NotImplementedError
+        initial_condition: str | xr.DataArray | None = None,
+    ) -> xr.DataArray:
+        # if initial_condition is None, it is fetched from the self.ic_source
+        return run_basic_inference(
+            model=self.model,
+            n=1,
+            data_source=self.data_source,
+            time=start_time,
+            x=initial_condition,
+        )
 
-    def predict_steps(self, start_time: datetime.datetime, lead_time: int = 6):
-        pred_time, pred = start_time, None
-        for n in range(self.time_steps(lead_time)):
-            pred = self.predict_one_step(pred_time, initial_condition=pred).isel(time=slice(int(bool(n)), 2))
-            pred_time = start_time + self.time_step
-            yield pred
-
-    def predict_all_steps(
+    def forecast(
         self,
         start_time: datetime.datetime,
         n_steps: int = 3,
-    ) -> xr.DataArray | xr.Dataset | list[xr.DataArray | xr.Dataset]:
-        pred, preds = None, []
-        for n in range(n_steps):
-            pred = self.predict_one_step(start_time, initial_condition=pred)
-            pred_time = start_time + self.time_step
-            preds.append(pred.isel(time=1) if n > 0 else pred)
-            start_time = pred_time
-            logger.success(f"Rollout step {n+1}/{n_steps} completed")
-        pred = xr.concat(preds, dim="time")
-        return pred
+        channels: List[str] = [],
+    ):
+        """
+        Return full concated forecast for the channels of interest
+        i.e., for all steps starting from the ic as xr.DataArray
+        if channels is empty, return all channels
+
+        NOTE:   expect minor output discrapancies between this method and rollout.
+                for some models, there are other different models for different lead times,
+                e.g. pangu6, pangu24
+        """
+
+        da = run_basic_inference(
+            model=self.model,
+            n=n_steps,
+            data_source=self.data_source,
+            time=start_time,
+            x=None,
+        )
+        return da.sel(channel=channels) if channels else da
 
     def rollout(
         self,
@@ -106,11 +120,10 @@ class GlobalModel:
         n_steps: int = 3,
         save: bool = True,
         save_config: dict = {},
-    ) -> tuple[xr.DataArray | xr.Dataset, list[str]]:
-        # it does not make sense to keep all the results in the memory
-        # return final pred and list of paths of the saved predictions
+    ) -> tuple[xr.DataArray, list[str]]:
+        # return final prediction and paths of the intermediate predictions
         # TODO: add functionality to rollout from a given initial condition
-        pred, output_paths, source, preds = None, [], self.ic_source, []
+        pred, output_paths, source = None, [], self.ic_source
         forecast_id = save_config.get("forecast_id", generate_forecast_id())
         save_config.update({"forecast_id": forecast_id})
         for n in range(n_steps):
@@ -132,15 +145,15 @@ class GlobalModel:
 
 
 class GlobalPrediction:
-    filepath: Path = None
-    prediction: xr.Dataset | xr.DataArray = None
+    filepath: Path | None = None
+    prediction: xr.DataArray | None = None
 
-    def __init__(self, source):
+    def __init__(self, source: str | xr.DataArray, model_name: str = ""):
+        self.model = model_name
         if isinstance(source, (str, Path)):
             self.filepath = Path(source)
             self.prediction = xr.open_dataarray(source).squeeze()
-
-        elif isinstance(source, xr.Dataset) or isinstance(source, xr.DataArray):
+        elif isinstance(source, xr.DataArray):
             self.filepath = None
             self.prediction = source.squeeze()  # get rid of the dimensions with size 1
         else:
@@ -160,8 +173,12 @@ class GlobalPrediction:
 
     def __repr__(self) -> str:
         # This shows the filepath if it exists or the type and size of the prediction if not
-        source_info = self.filepath if self.filepath else f"{type(self.prediction).__name__} with shape {self.prediction.shape}"
-        return f"{self.__class__.__name__}(source={source_info})"
+        source_info = (
+            self.filepath
+            if self.filepath
+            else f"{type(self.prediction).__name__} with shape {self.prediction.shape}"
+        )
+        return f"GlobalPrediction(model={self.model},source={source_info})"
 
     def slice(
         self,
@@ -213,10 +230,15 @@ class GlobalPrediction:
             lon = 360 + lon
         assert channel in self.channels, f"Variable {channel} not found in dataset."
 
-        if lat not in self.prediction.coords["lat"].values or lon not in self.prediction.coords["lon"].values:
+        if (
+            lat not in self.prediction.coords["lat"].values
+            or lon not in self.prediction.coords["lon"].values
+        ):
             lat = self.prediction.sel(lat=lat, method="nearest").lat.item()
             lon = self.prediction.sel(lon=lon, method="nearest").lon.item()
-            logger.warning(f"Exact coordinates not found. Using nearest values: Lat {lat}, Lon {lon}")
+            logger.warning(
+                f"Exact coordinates not found. Using nearest values: Lat {lat}, Lon {lon}"
+            )
 
         data = self.prediction.sel(lat=lat, lon=lon, channel=channel).isel(time=n_step)
         return data.item()
@@ -266,7 +288,9 @@ class GlobalPredictionRollout:
         n_step: int | None = 1,
     ):
         # NOTE: pressure level is in hPa
-        return [pred.wind_speed(lat, lon, pressure_level, n_step) for pred in self.rollout]
+        return [
+            pred.wind_speed(lat, lon, pressure_level, n_step) for pred in self.rollout
+        ]
 
     def surface_wind_speed(
         self,

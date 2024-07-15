@@ -1,12 +1,6 @@
-import datetime
-from pathlib import Path
-import xarray as xr
-
-from earth2mip import registry
-from earth2mip.initial_conditions import cds
 import earth2mip.networks.pangu as pangu
-from .base import GlobalModel, GlobalPrediction
-from .utils import run_basic_inference
+from earth2mip import registry
+from .base import GlobalModel
 
 # fmt: off
 CHANNELS = ["z1000", "z925", "z850", "z700", "z600","z500", "z400", "z300", "z250", "z200",
@@ -34,6 +28,13 @@ class PanguModel(GlobalModel):
 
     Parameters:
     - model_name (str): Name of the model, default is 'pangu'.
+    
+    n_history_levels: int = 1
+    grid.lat: list of length 721, [90, 89.75, 89.50, ..., -89.75, -90]
+    grid.lon: list of length 1440, [0.0, 0.25, ..., 359.75]
+    in_channel_names: list of length 69, ["z1000", "z925", "z850", "z700", "z600", ..., "t2m"] 
+    out_channel_names: list of length 69, ["z1000", "z925", "z850", "z700", "z600", ..., "t2m"] 
+  
     """
 
     model_name = "pangu"
@@ -59,22 +60,3 @@ class PanguModel(GlobalModel):
     @property
     def out_channel_names(self):
         return self.model.out_channel_names
-
-    def predict_one_step(
-        self,
-        start_time: datetime.datetime,
-        initial_condition: str | Path | None = None,
-    ) -> xr.DataArray | xr.Dataset:
-        return run_basic_inference(
-            model=self.model,
-            n=1,
-            data_source=self.data_source,
-            time=start_time,
-            x=initial_condition,
-        )
-
-
-class PanguPrediction(GlobalPrediction):
-    def __init__(self, source):
-        super().__init__(source)
-        self.model_name = "pangu"

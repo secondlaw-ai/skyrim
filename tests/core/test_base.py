@@ -23,5 +23,5 @@ class BoringGlobalModel(GlobalModel):
 
 def test_get_initial_conditions():
     # wip, test channels.
-    model = BoringGlobalModel(ic_provider="ifs")
+    model = BoringGlobalModel(ic_source="ifs")
     assert isinstance(model.data_source, IfsDatasource)

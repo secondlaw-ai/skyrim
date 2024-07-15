@@ -16,30 +16,40 @@ def run_basic_inference(
 ):
     """Run a basic inference"""
     if x is None:
+        # this comes with the batch dimention
         x = initial_conditions.get_initial_condition_for_model(model, data_source, time)
         logger.info(f"Fetching initial conditions from data source")
     else:
         logger.info(f"Using provided initial conditions")
         if isinstance(x, str):
-            x = torch.Tensor(xr.open_dataarray(x).values[-1:]).to(model.device)
+            x = torch.Tensor(xr.open_dataarray(x).values[-model.n_history_levels :]).to(
+                model.device
+            )
         else:
-            x = torch.Tensor(x.values[-1:]).to(model.device)
+            x = torch.Tensor(x.values[-model.n_history_levels :]).to(model.device)
+        # add the batch dimenstion
+        x = x.unsqueeze(0)
 
-    arrays = []
-    times = []
-    for k, (time, data, _) in enumerate(model(time, x)):
-        arrays.append(data.cpu().numpy())
+    logger.debug(f"x.shape: {x.shape}")
+
+    arrays, times = [], []
+    for k, (time, output, _) in enumerate(model(time, x)):
+        # (time, output, restart) tuples.
+        # output is a tensor with shape (B, len(out_channel_names), len(lat), len(lon))
+        logger.debug(f"output.shape: {output.shape}")
+        arrays.append(output.cpu().numpy().squeeze())  # get rid of the batch dimension
         times.append(time)
         if k == n:
             break
 
     stacked = np.stack(arrays)
-    coords = dict(lat=model.grid.lat, lon=model.grid.lon)
-    coords["channel"] = model.out_channel_names
-    coords["time"] = times
-    return xr.DataArray(
-        stacked, dims=["time", "history", "channel", "lat", "lon"], coords=coords
+    coords = dict(
+        time=times,
+        channel=model.out_channel_names,
+        lat=model.grid.lat,
+        lon=model.grid.lon,
     )
+    return xr.DataArray(stacked, dims=["time", "channel", "lat", "lon"], coords=coords)
 
 
 def estimate_pressure_hpa(elevation_m):
@@ -65,7 +75,7 @@ def perturb_initial_conditions(initial_conditions, channel, lat, lon, value):
     Perturb the initial conditions by setting a specific value for a given channel at a specific lat/lon.
 
     Parameters:
-    - initial_conditions (xr.DataArray | xr.Dataset): The initial conditions dataset to be perturbed.
+    - initial_conditions (xr.DataArray): The initial conditions dataset to be perturbed.
     - channel (str): Variable name to modify, e.g. 't2m'
     - lat (float): Latitude where the value should be set.
     - lon (float): Longitude where the value should be set.

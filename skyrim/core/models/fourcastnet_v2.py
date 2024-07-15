@@ -20,6 +20,14 @@ CHANNELS = [ "u10m", "v10m", "u100m", "v100m", "t2m", "sp", "msl", "tcwv", "u50"
     ]
 # fmt: on
 class FourcastnetV2Model(GlobalModel):
+    """
+    n_history_levels: int = 1
+    grid.lat: list of length 721, [90, 89.75, 89.50, ..., -89.75, -90]
+    grid.lon: list of length 1440, [0.0, 0.25, ..., 359.75]
+    in_channel_names: list of length 73, ['u10m', 'v10m', 'u100m', 'v100m', ..., 'r1000']
+    out_channel_names: list of length 73, ['u10m', 'v10m', 'u100m', 'v100m', ..., 'r1000']
+    """
+
     model_name = "fourcastnet_v2"
 
     def __init__(self, *args, **kwargs):
@@ -39,22 +47,3 @@ class FourcastnetV2Model(GlobalModel):
     @property
     def out_channel_names(self):
         return self.model.out_channel_names
-
-    def predict_one_step(
-        self,
-        start_time: datetime.datetime,
-        initial_condition: str | Path | None = None,
-    ) -> xr.DataArray | xr.Dataset:
-        return run_basic_inference(
-            model=self.model,
-            n=1,
-            data_source=self.data_source,
-            time=start_time,
-            x=initial_condition,
-        )
-
-
-class FourcastnetV2Prediction(GlobalPrediction):
-    def __init__(self, source):
-        super().__init__(source)
-        self.model_name = "fourcastnet_v2"
