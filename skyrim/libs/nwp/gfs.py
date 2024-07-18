@@ -257,6 +257,24 @@ class GFSModel:
 
         return exists
 
+    def forecast(
+        self,
+        start_time: datetime.datetime,
+        n_steps: int = 3,
+        step_size: int = 6,  # hours
+        **kwargs,
+    ) -> xr.DataArray:
+        # TODO: brittle, as it assumes steps described by step_size and n_steps are available
+
+        steps = [step_size * i for i in range(n_steps + 1)]
+
+        logger.debug(f"Forecast start time: {start_time}")
+        logger.debug(f"Forecast steps: {steps}")
+        logger.debug(f"len(steps): {len(steps)}")
+
+        darray = self.fetch_dataarray(start_time, steps)
+        return darray
+
     def predict(
         self,
         date: str,  # YYYMMDD, e.g. 20180101
