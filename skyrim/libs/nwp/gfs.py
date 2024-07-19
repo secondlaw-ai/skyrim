@@ -151,7 +151,7 @@ class GFSModel:
     GFS is a global model with a base horizontal resolution of 18 miles (28 kilometers)
     between grid points.
 
-    Temporal resolution covers analysis and forecasts out to 16 days.
+    Temporal resolution covers analysis and forecasts out to 16 days (384 hours).
 
     Horizontal resolution drops to 44 miles (70 kilometers) between grid points for forecasts
     between one week and two weeks.
@@ -279,7 +279,7 @@ class GFSModel:
         self,
         date: str,  # YYYMMDD, e.g. 20180101
         time: str,  # HHMM, e.g. 0300, 1400, etc
-        lead_time: int = 24,  # in hours 0-394,
+        lead_time: int = 24,  # in hours 0-384,
         save: bool = False,
         save_config: dict = {},
     ) -> xr.DataArray:
