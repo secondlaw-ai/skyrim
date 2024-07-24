@@ -33,7 +33,7 @@
 
 Skyrim allows you to run any large weather model with a consumer grade GPU.
 
-Until very recently, weather forecasts were run in 100K+ CPU HPC clusters, solving massive numerical models. Within last 2 years, open-source foundation models trained on weather simulation datasets surpassed the skill level of these numerical models.
+Until very recently, weather forecasts were run in 100K+ CPU HPC clusters, solving massive numerical weather models (NWP). Within last 2 years, open-source foundation models trained on weather simulation datasets surpassed the skill level of these numerical models.
 
 Our goal is to make these models accessible by providing a well maintained infrastructure.
 
@@ -227,9 +227,9 @@ Currently supported models are:
 - [x] [Pangu](https://arxiv.org/abs/2211.02556)
 - [x] [Fourcastnet](https://arxiv.org/abs/2202.11214) (v1 & v2)
 - [x] [DLWP](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020MS002109)
-- [x] [ECMWF IFS (HRES)](https://www.ecmwf.int/en/forecasts/documentation-and-support/changes-ecmwf-model)
-- [x] [NOAA GFS](https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast)
-- [ ] [ICON](https://www.dwd.de/EN/ourservices/nwp_forecast_data/nwp_forecast_data.html)
+- [x] [(NWP) ECMWF IFS (HRES)](https://www.ecmwf.int/en/forecasts/documentation-and-support/changes-ecmwf-model) -- [notebook](https://github.com/secondlaw-ai/skyrim/blob/master/notebooks/02_ifs_model.ipynb)
+- [x] [(NWP) NOAA GFS](https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast) -- [notebook](https://github.com/secondlaw-ai/skyrim/blob/master/notebooks/03_gfs_model.ipynb)
+- [ ] [(NWP) ICON](https://www.dwd.de/EN/ourservices/nwp_forecast_data/nwp_forecast_data.html)
 - [ ] [Fuxi](https://www.nature.com/articles/s41612-023-00512-1)
 - [ ] [Nano MetNet](https://arxiv.org/abs/2306.06079)
 
