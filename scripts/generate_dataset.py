@@ -5,7 +5,6 @@ import xarray as xr
 from loguru import logger
 from skyrim.common import save_forecast
 from datetime import datetime, timedelta
-from skyrim.core import Skyrim
 from typing import TypeAlias
 
 
@@ -34,6 +33,8 @@ def generate_large_forecast_dataset(
 ):
     """This uses the rollout interface for Memory intensive models, ie. Graphcast."""
     assert ic_start_hour in IC_START_HOURS
+    from skyrim.core import Skyrim
+
     model = Skyrim(model, ic_source=ic)
     lats, lons = [lat for lat, _ in locations], [lon for _, lon in locations]
     pred_start_dates = [
@@ -94,30 +95,39 @@ def generate_forecast_dataset(
     output_dir: str = "s3://skyrim-dev/",
     ic_start_hour: int = 0,
 ):
-    model = Skyrim(model, ic_source=ic)
+    if model == "ifs":
+        from skyrim.libs.nwp.ifs import IFSModel
+
+        model = IFSModel(channels=channels)
+
+    elif model == "gfs":
+        from skyrim.libs.nwp.gfs import GFSModel
+
+        model = GFSModel(channels=channels)
+    else:
+        from skyrim.core import Skyrim
+
+        model = Skyrim(model, ic_source=ic)
+
     lats, lons = [lat for lat, _ in locations], [lon for _, lon in locations]
+
     pred_start_dates = [
         start_time + timedelta(days=step)
         for step in range((end_time - start_time).days + 1)
     ]
     assert ic_start_hour in IC_START_HOURS
+
     for i, start in enumerate(pred_start_dates, 1):
         logger.debug(f"Generating forecast for {i} / {len(pred_start_dates)}")
         start = start.replace(hour=ic_start_hour)
         pred = model.forecast(
             start_time=start,
-            lead_time=lead_time,
+            n_steps=lead_time // 6,  # TODO: remove the hardcoded time_step
             channels=channels,
         )
         save_forecast(
-            (
-                pred.prediction.sel(lat=lats, lon=lons, method="nearest")
-                if len(locations)
-                else pred.prediction
-            )
-            .assign_coords(
-                pred_start=("time", [start for _ in range(pred.prediction.time.size)])
-            )
+            (pred.sel(lat=lats, lon=lons, method="nearest") if len(locations) else pred)
+            .assign_coords(pred_start=("time", [start for _ in range(pred.time.size)]))
             .set_xindex("pred_start"),
             model,
             start,
@@ -169,13 +179,17 @@ def generate():
     # generate 3 days for pangu and then for fourcastnet_v2
     # models = ["fourcastnet_v2", "fourcastnet", "pangu"]
     # models = ["pangu", "fourcastnet_v2", "fourcastnet"]
-    models = ["fourcastnet"]
-    ic = "ifs"
+    # models = ["fourcastnet"]
+    models = ["ifs", "gfs"]
+    ic = ""
     ic_start_hour = 0
-    start_time = datetime(
-        2024, 4, 4
-    )  # march 1 has an issue in IFS with w param, double check.
-    end_time = datetime(2024, 4, 6)
+    # start_time = datetime(
+    #     2024, 4, 4
+    # )  # march 1 has an issue in IFS with w param, double check.
+    # end_time = datetime(2024, 4, 6)
+
+    start_time = datetime(2024, 4, 1)
+    end_time = datetime(2024, 7, 9)
     lead_time = 48
     make_xp_id = (
         lambda model: model
@@ -202,6 +216,10 @@ def generate():
         else:
             generate_large_forecast_dataset(*args_, **kwargs_)
         logger.debug(f"Completed run for model {m}")
+
+        if m in ["ifs", "gfs"]:
+            # no need to clear memory
+            continue
         clear_memory()
 
 
