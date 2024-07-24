@@ -227,8 +227,11 @@ Currently supported models are:
 - [x] [Pangu](https://arxiv.org/abs/2211.02556)
 - [x] [Fourcastnet](https://arxiv.org/abs/2202.11214) (v1 & v2)
 - [x] [DLWP](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020MS002109)
+- [x] [ECMWF IFS (HRES)](https://www.ecmwf.int/en/forecasts/documentation-and-support/changes-ecmwf-model)
+- [x] [NOAA GFS](https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast)
+- [ ] [ICON](https://www.dwd.de/EN/ourservices/nwp_forecast_data/nwp_forecast_data.html)
 - [ ] [Fuxi](https://www.nature.com/articles/s41612-023-00512-1)
-- [ ] [MetNet-3](https://arxiv.org/abs/2306.06079)
+- [ ] [Nano MetNet](https://arxiv.org/abs/2306.06079)
 
 ### License
 
