@@ -1,6 +1,7 @@
 import os
 import hashlib
 import argparse
+import time
 import numpy as np
 import xarray as xr
 import datetime
@@ -9,11 +10,15 @@ from tqdm import tqdm
 from loguru import logger
 import s3fs
 import shutil
+from functools import lru_cache
 from s3fs.core import S3FileSystem
+import concurrent.futures
+import uuid
+
 from ...common import LOCAL_CACHE, save_forecast
 
 # example invocation:
-# python -m skyrim.libs.benchmark.gfs --date 20230101 --time 1200 --lead_time 36
+# python -m skyrim.libs.nwp.gfs --date 20230101 --time 1200 --lead_time 36
 
 
 # skyrim to gfs mapping
@@ -169,12 +174,15 @@ class GFSModel:
     GFS_BUCKET_NAME = "noaa-gfs-bdp-pds"
     MAX_BYTE_SIZE = 5000000
 
-    def __init__(self, channels: list[str], cache: bool = True):
+    def __init__(
+        self, channels: list[str], cache: bool = True, multithread: bool = False
+    ):
         self._cache = cache
         self.model_name = "GFS"
         self.assure_channels_exist(channels)
         self.channels = channels
         self.cached_files = []
+        self.multithread = multithread
         logger.info(f"GFS model initialized with channels: {channels}")
         logger.debug(f"GFS cache location: {self.cache}")
 
@@ -194,8 +202,7 @@ class GFSModel:
         cache_location = os.path.join(LOCAL_CACHE, "gfs")
         if not self._cache:
             cache_location = os.path.join(LOCAL_CACHE, "gfs", "tmp")
-        if not os.path.exists(cache_location):
-            os.makedirs(cache_location)
+        os.makedirs(cache_location, exist_ok=True)
         return cache_location
 
     @property
@@ -405,7 +412,6 @@ class GFSModel:
         steps: list[int] = list(range(0, 385)),
     ) -> xr.DataArray:
         """
-        TBA
         Additional information
         model cycle runtimes are 00, 06, 12, 18
         >> aws s3 ls --no-sign-request s3://noaa-gfs-bdp-pds/gfs.20240610/
@@ -415,7 +421,6 @@ class GFSModel:
                            PRE 12/
                            PRE 18/
         """
-
         gfs_dataarray = xr.DataArray(
             data=np.empty(
                 (len(steps), len(self.channels), len(self.GFS_LAT), len(self.GFS_LON))
@@ -431,37 +436,61 @@ class GFSModel:
         )
         logger.debug(f"Creating GFS dataarray with shape: {gfs_dataarray.shape}")
 
-        for i, channel in enumerate(
-            tqdm(self.channels, desc=f"Fetching GFS for {start_time}")
-        ):
-            gfs_id, gfs_level, modifier_func = GFS_Vocabulary.get(channel)
-            gfs_name = f"{gfs_id}::{gfs_level}"
-            # TODO: Check if gfs_name is in index_file
-            for sidx, step in enumerate(steps):
-                index_file = self._fetch_index(start_time, step)
-                byte_offset, byte_length = (
-                    index_file[gfs_name][0],
-                    index_file[gfs_name][1],
-                )
-                pred_time = start_time + datetime.timedelta(hours=step)
+        if self.multithread:
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                futures = []
+                for i, channel in enumerate(self.channels):
+                    future = executor.submit(
+                        self._fetch_channel, start_time, steps, channel, i
+                    )
+                    futures.append(future)
 
-                # Download the grib file to cache
-                logger.debug(
-                    f"Fetching GFS grib file for channel: {channel} at {pred_time}"
-                )
-                s3_uri = self.get_grib_s3uri(start_time, step)
-                grib_file = self._download_s3_grib_to_cache(
-                    s3_uri, byte_offset=byte_offset, byte_length=byte_length
-                )
-                self.cached_files.append(grib_file)
-                # Open into xarray data-array
-                da = xr.open_dataarray(
-                    grib_file, engine="cfgrib", backend_kwargs={"indexpath": ""}
-                )
-                logger.debug(f"Cached data array shape: {da.shape}")
-                gfs_dataarray[sidx, i, :, :] = modifier_func(da.values)
+                for future in tqdm(
+                    futures,
+                    total=len(futures),
+                    desc=f"Fetching GFS for {start_time}",
+                ):
+                    i, channel_data = future.result()
+                    gfs_dataarray[:, i, :, :] = channel_data
+        else:
+            for i, channel in tqdm(
+                enumerate(self.channels),
+                desc=f"Fetching GFS for {start_time}",
+                total=len(self.channels),
+            ):
+                channel_data = self._fetch_channel(start_time, steps, channel, i)
+                gfs_dataarray[:, i, :, :] = channel_data[1]
 
         return gfs_dataarray
+
+    def _fetch_channel(
+        self, start_time: datetime, steps: list[int], channel: str, channel_index: int
+    ):
+        gfs_id, gfs_level, modifier_func = GFS_Vocabulary.get(channel)
+        gfs_name = f"{gfs_id}::{gfs_level}"
+        channel_data = np.empty((len(steps), len(self.GFS_LAT), len(self.GFS_LON)))
+
+        for sidx, step in enumerate(steps):
+            index_file = self._fetch_index(start_time, step)
+            byte_offset, byte_length = index_file[gfs_name][0], index_file[gfs_name][1]
+            pred_time = start_time + datetime.timedelta(hours=step)
+
+            logger.debug(
+                f"Fetching GFS grib file for channel: {channel} at {pred_time}"
+            )
+            s3_uri = self.get_grib_s3uri(start_time, step)
+            grib_file = self._download_s3_grib_to_cache(
+                s3_uri, byte_offset=byte_offset, byte_length=byte_length
+            )
+            self.cached_files.append(grib_file)
+
+            da = xr.open_dataarray(
+                grib_file, engine="cfgrib", backend_kwargs={"indexpath": ""}
+            )
+            logger.debug(f"Cached data array shape: {da.shape}")
+            channel_data[sidx, :, :] = modifier_func(da.values)
+
+        return channel_index, channel_data
 
     def _fetch_index(
         self, start_time: datetime, step: int
@@ -532,7 +561,8 @@ class GFSModel:
         return index_table
 
     def _download_s3_index_to_cache(self, path: str) -> str:
-        sha = hashlib.sha256(path.encode())
+        unique_id = uuid.uuid4().hex[:8]
+        sha = hashlib.sha256((path + unique_id).encode())
         filename = sha.hexdigest()
 
         cache_path = os.path.join(self.cache, filename)
@@ -616,18 +646,28 @@ if __name__ == "__main__":
         help="The lead time in hours from 0 to 240",
         default=default_lead_time,
     )
+
+    parser.add_argument(
+        "--multithread",
+        action="store_true",
+        help="Use multithreading to fetch data",
+    )
     args = parser.parse_args()
 
     logger.info(f"date (str) set to {args.date}")
     logger.info(f"time (str) set to {args.time}")
     logger.info(f"lead_time (int) set to {args.lead_time} hours")
+    logger.info(f"multithread (bool) set to {args.multithread}")
 
-    model = GFSModel(channels=["u10m", "v10m", "t2m"], cache=False)
+    t = time.time()
+    model = GFSModel(
+        channels=["u10m", "v10m", "t2m"], cache=False, multithread=args.multithread
+    )
     forecast = model.predict(
         date=args.date,
         time=args.time,
         lead_time=args.lead_time,
         save=True,
     )
-    print(f"forecast.shape: {forecast.shape}")
-    print(f"model.cached_files: {model.cached_files}")
+    logger.success(f"Prediction completed in {time.time() - t:.2f} seconds.")
+    logger.info(f"forecast.shape: {forecast.shape}")

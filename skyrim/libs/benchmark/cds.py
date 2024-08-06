@@ -142,7 +142,7 @@ class CDS_Vocabulary:
         return key in self.VOCAB
 
     @classmethod
-    def get(cls, channel: str) -> str:
+    def get(cls, channel: str) -> tuple[str, str, str]:
         """Get CDS parameter ID, level type,  and level for a given channel."""
         cds_key = cls.VOCAB[channel]
         cds_levtype, cds_id, cds_level = cds_key.split("::")
@@ -391,6 +391,23 @@ class CDS:
         hour = sorted(list(set(t.hour for t in time)))
 
         return year, month, day, hour
+
+    def forecast(
+        self,
+        start_time: datetime.datetime,
+        n_steps: int,
+        step_size: int = 6,  # in hours
+        **kwargs,
+    ) -> xr.DataArray:
+        """This is actually a hindcast, not a forecast."""
+        timestamps = [
+            start_time + datetime.timedelta(hours=i * step_size)
+            for i in range(0, n_steps + 1)
+        ]
+        logger.debug(
+            f"Fetching CDS data array hindcast for {len(timestamps)} timestamps."
+        )
+        return self.fetch_dataarray(timestamps)
 
     def benchmark(
         self,
