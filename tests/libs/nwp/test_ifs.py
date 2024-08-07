@@ -163,5 +163,7 @@ def test_slice_lead_time_to_steps_invalid_start_time():
         model._slice_lead_time_to_steps(lead_time, start_time)
 
 
-if __name__ == "__main__":
-    pytest.main()
+def test_ifs_04_resolution():
+    model = IFSModel(channels=["u10m"], cache=True, source="aws", resolution="0p4-beta")
+    start_time = datetime.datetime(2023, 1, 18, 0, 0)  # has only 0p4-beta
+    res = model.forecast(start_time, 24)

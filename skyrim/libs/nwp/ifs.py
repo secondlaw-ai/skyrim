@@ -20,6 +20,8 @@ from ...utils import ensure_ecmwf_loaded
 # example invocation:
 # python -m skyrim.libs.nwp.ifs --date 20230101 --time 1200 --lead_time 36
 
+MODEL_RESOLUTION = {"0p4-beta", "0p25"}
+
 
 # skyrim to ifs mapping
 class IFS_Vocabulary:
@@ -111,11 +113,14 @@ class IFSModel:
         channels: list[str],
         cache: bool = True,
         source: Literal["aws", "ecmwf", "azure"] = "aws",
+        resolution: str = "0p25",
         multithread: bool = False,
     ):
         self._cache = cache
         self.source = source
-        self.client = ecmwf.opendata.Client(source=source)
+        if resolution not in MODEL_RESOLUTION:
+            raise ValueError(f"Invalid model resolution: {resolution}")
+        self.client = ecmwf.opendata.Client(source=source, resol=resolution)
         self.model_name = "HRES"
         self.cached_files = []
 
