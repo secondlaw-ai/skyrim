@@ -164,6 +164,17 @@ def test_slice_lead_time_to_steps_invalid_start_time():
 
 
 def test_ifs_04_resolution():
+    # has only 0p4-beta
     model = IFSModel(channels=["u10m"], cache=True, source="aws", resolution="0p4-beta")
-    start_time = datetime.datetime(2023, 1, 18, 0, 0)  # has only 0p4-beta
+    start_time = datetime.datetime(2023, 1, 18, 0, 0)
     res = model.forecast(start_time, 24)
+    assert res.sel(channel="u10m").isel(lat=0, lon=0).values.any()
+
+
+def test_ifs_04_resolution_recent():
+    # has both 0p4-beta and 0p25
+    model = IFSModel(channels=["u10m"], cache=True, source="aws", resolution="0p4-beta")
+    start_time = datetime.datetime(2024, 7, 21, 0, 0)
+    res = model.forecast(start_time, 24)
+    with pytest.xfail(reason="Needs patching emcwf client"):
+        assert res.sel(channel="u10m").isel(lat=0, lon=0).values.any()

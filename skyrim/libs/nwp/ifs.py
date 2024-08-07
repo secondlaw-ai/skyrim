@@ -104,8 +104,6 @@ class IFSModel:
         https://confluence.ecmwf.int/display/FCST/Known+IFS+forecasting+issues
     """
 
-    IFS_LAT = np.linspace(90, -90, 721)
-    IFS_LON = np.linspace(0, 360, 1440, endpoint=False)
     IFS_BUCKET_NAME = "ecmwf-forecasts"
 
     def __init__(
@@ -120,6 +118,13 @@ class IFSModel:
         self.source = source
         if resolution not in MODEL_RESOLUTION:
             raise ValueError(f"Invalid model resolution: {resolution}")
+        if resolution == "0p25":
+            self.IFS_LAT = np.linspace(90, -90, 721)
+            self.IFS_LON = np.linspace(0, 360, 1440, endpoint=False)
+        else:
+            self.IFS_LAT = np.linspace(90, -90, 451)
+            self.IFS_LON = np.linspace(0, 360, 900, endpoint=False)
+
         self.client = ecmwf.opendata.Client(source=source, resol=resolution)
         self.model_name = "HRES"
         self.cached_files = []
