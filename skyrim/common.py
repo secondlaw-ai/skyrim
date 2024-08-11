@@ -5,6 +5,7 @@ import xarray as xr
 import boto3
 import s3fs
 import os
+import zarr
 from datetime import datetime
 from typing import Literal, Callable
 from pathlib import Path
@@ -12,6 +13,7 @@ from loguru import logger
 from urllib.parse import urlparse
 from io import BytesIO
 from dataclasses import dataclass, field
+from huggingface_hub import upload_file, login
 
 AVAILABLE_MODELS = ["pangu", "fourcastnet", "fourcastnet_v2", "graphcast", "dlwp"]
 LOCAL_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "skyrim")
@@ -75,6 +77,39 @@ def remote_forecast_exists(path: str):
     return "Contents" in s3_client.list_objects_v2(
         Bucket=p.netloc, Prefix=p.path[1:], MaxKeys=1
     )
+
+
+def to_hf(da: xr.DataArray, repo: str, path: str):
+    """
+    Writes an xarray DataArray to a Hugging Face repository.
+
+    Parameters:
+    da (xr.DataArray): The DataArray to be written to the repository.
+    repo (str): The name of the Hugging Face repository.
+    path (str): The path within the repository where the DataArray will be stored.
+
+    Note:
+    1/ Hugging Face automatically deduplicates identical values, so naming cannot guarantee access.
+    2/ Uploading without zip is not recommended, HF rate limits when too many files are uploaded.
+    3/ There is a limit of 10K files per folder as well (apparently).
+    TODO:
+    Add compression to the data before writing.
+    """
+    login(token=os.environ["HF_TOKEN"])
+    Path("./temp.zarr.zip").unlink(missing_ok=True)
+    try:
+        with zarr.ZipStore("./temp.zarr.zip", mode="w") as store:
+            da.to_zarr(store, compute=True)
+        upload_file(
+            path_or_fileobj="./temp.zarr.zip",
+            path_in_repo=path,
+            repo_id=repo,
+            repo_type="dataset",
+        )
+    except Exception as e:
+        raise e
+    finally:
+        Path("./temp.zarr.zip").unlink()
 
 
 def save_forecast(
@@ -156,5 +191,9 @@ def save_forecast(
                 )
         else:
             raise ValueError(f"Invalid file type. {config.file_type} not supported.")
+    elif target == "hf":
+        # only zarr supported for now.
+        to_hf(pred, config.output_dir, config.forecast_id)
+
     logger.success(f"Results saved to: {output_path}")
     return str(output_path)
