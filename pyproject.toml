@@ -22,7 +22,7 @@ keywords = ["pytorch", "weather", "forecasting", "ai", "ml", "xarray", "dl"]
 dependencies = [
   "modal",
   "loguru",
-  "xarray[zarr]",
+  "xarray",
   "base58",
   "botocore",
   "aiobotocore",

@@ -86,7 +86,7 @@ def to_hf(da: xr.DataArray, repo: str, path: str):
     Parameters:
     da (xr.DataArray): The DataArray to be written to the repository.
     repo (str): The name of the Hugging Face repository.
-    path (str): The path within the repository where the DataArray will be stored.
+    path (str): The path within the repository where the DataArray will be stored, no suffix.
 
     Note:
     1/ Hugging Face automatically deduplicates identical values, so naming cannot guarantee access.
@@ -102,7 +102,7 @@ def to_hf(da: xr.DataArray, repo: str, path: str):
             da.to_zarr(store, compute=True)
         upload_file(
             path_or_fileobj="./temp.zarr.zip",
-            path_in_repo=path,
+            path_in_repo=path + ".zarr.zip",
             repo_id=repo,
             repo_type="dataset",
         )
@@ -123,8 +123,9 @@ def save_forecast(
     requested_file_type = config.get("file_type")
     config = SaveConfig(**config)
     p = urlparse(config.output_dir)
-    target = "s3" if p.scheme == "s3" else "local"
-    if target == "s3" and (not requested_file_type):
+    target = p.scheme or "local"
+    if target and (not requested_file_type):
+        # for all remote targets, default support zarr
         config.file_type = "zarr"
 
     pred = config.mapping_func(pred)
@@ -193,7 +194,11 @@ def save_forecast(
             raise ValueError(f"Invalid file type. {config.file_type} not supported.")
     elif target == "hf":
         # only zarr supported for now.
-        to_hf(pred, config.output_dir, config.forecast_id)
+        organization = p.netloc
+        _, repo, *parent_path = p.path.split("/")
+        parent_path = "/".join(parent_path)
+        output_path = os.path.join(parent_path, config.forecast_id)
+        to_hf(pred, "/".join((organization, repo)), output_path)
 
     logger.success(f"Results saved to: {output_path}")
     return str(output_path)

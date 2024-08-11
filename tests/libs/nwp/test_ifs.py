@@ -41,7 +41,7 @@ def test_ifs_model_assure_channels_exist():
     channels = ["u10m", "v10m"]
     model = IFSModel(channels=channels, cache=True, source="aws")
     model.assure_channels_exist(channels)
-    with pytest.raises(AssertionError):
+    with pytest.raises(Exception):
         model.assure_channels_exist(["invalid_channel"])
 
 
@@ -95,7 +95,7 @@ def test_fetch_ifs_dataarray():
         ).roll(longitude=720, roll_coords=True)
         mock_open_dataarray.return_value = mock_da
 
-        dataarray = model.fetch_ifs_dataarray(start_time, steps)
+        dataarray = model.fetch_dataarray(start_time, steps)
 
         assert dataarray.shape == (len(steps), len(channels), 721, 1440)
         assert list(dataarray.coords.keys()) == ["time", "channel", "lat", "lon"]

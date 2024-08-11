@@ -5,6 +5,7 @@ import pytest
 from skyrim.common import save_forecast, generate_forecast_id
 from datetime import datetime
 from pathlib import Path
+from huggingface_hub import HfFileSystem
 
 
 def mock_forecast():
@@ -34,7 +35,12 @@ def test_saves_forecast_locally():
     pred_time = datetime.now()
     fid = generate_forecast_id()
     output_path = save_forecast(
-        ds, "test_model", start_time, pred_time, "cds", config={"forecast_id": fid}
+        ds,
+        "test_model",
+        start_time,
+        pred_time,
+        "cds",
+        config={"forecast_id": fid, "file_type": "netcdf"},
     )
     assert Path(output_path).exists()
     assert fid in output_path
@@ -46,6 +52,7 @@ def test_saves_forecast_locally():
     p = Path(output_path).parent
     Path(output_path).unlink()
     p.rmdir()
+
 
 @pytest.mark.integ
 def test_appends_forecast_in_s3():
@@ -66,7 +73,6 @@ def test_appends_forecast_in_s3():
         "cds",
         config={
             "forecast_id": fid,
-            "target": "s3",
             "file_type": "zarr",
             "output_dir": s3_path,
         },
@@ -80,7 +86,6 @@ def test_appends_forecast_in_s3():
         "cds",
         config={
             "forecast_id": fid,
-            "target": "s3",
             "file_type": "zarr",
             "output_dir": s3_path,
         },
@@ -90,3 +95,33 @@ def test_appends_forecast_in_s3():
     # cleanup
     c = subprocess.run(f"aws s3 rm s3://skyrim-dev/{fid}/ --recursive", shell=True)
     assert not c.returncode
+
+
+@pytest.mark.integ
+def test_saves_to_hf():
+    ds = mock_forecast()
+    start_time = datetime.now()
+    pred_time = datetime.now()
+    fid = "11"
+    hf_repo = "2lw/samples"
+    hf_url = "hf://" + hf_repo
+    save_forecast(
+        ds,
+        "test_model",
+        start_time,
+        pred_time,
+        "cds",
+        config={
+            "forecast_id": fid,
+            "file_type": "zarr",
+            "output_dir": hf_url,
+        },
+    )
+    # how you open:
+    hf_datasets_path = "hf://datasets/" + hf_repo
+    filename = fid + ".zarr.zip"
+    path = "zip:///::" + "/".join((hf_datasets_path, filename))
+    ds = xr.open_dataset(path, engine="zarr")
+    assert ds.temperature.shape == (1, 2, 181, 361)
+    fs = HfFileSystem()
+    fs.delete(hf_datasets_path + "/11.zarr.zip")
