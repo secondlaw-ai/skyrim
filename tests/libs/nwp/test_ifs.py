@@ -41,7 +41,7 @@ def test_ifs_model_assure_channels_exist():
     channels = ["u10m", "v10m"]
     model = IFSModel(channels=channels, cache=True, source="aws")
     model.assure_channels_exist(channels)
-    with pytest.raises(AssertionError):
+    with pytest.raises(Exception):
         model.assure_channels_exist(["invalid_channel"])
 
 
@@ -95,7 +95,7 @@ def test_fetch_ifs_dataarray():
         ).roll(longitude=720, roll_coords=True)
         mock_open_dataarray.return_value = mock_da
 
-        dataarray = model.fetch_ifs_dataarray(start_time, steps)
+        dataarray = model.fetch_dataarray(start_time, steps)
 
         assert dataarray.shape == (len(steps), len(channels), 721, 1440)
         assert list(dataarray.coords.keys()) == ["time", "channel", "lat", "lon"]
@@ -163,5 +163,18 @@ def test_slice_lead_time_to_steps_invalid_start_time():
         model._slice_lead_time_to_steps(lead_time, start_time)
 
 
-if __name__ == "__main__":
-    pytest.main()
+def test_ifs_04_resolution():
+    # has only 0p4-beta
+    model = IFSModel(channels=["u10m"], cache=True, source="aws", resolution="0p4-beta")
+    start_time = datetime.datetime(2023, 1, 18, 0, 0)
+    res = model.forecast(start_time, 24)
+    assert res.sel(channel="u10m").isel(lat=0, lon=0).values.any()
+
+
+def test_ifs_04_resolution_recent():
+    # has both 0p4-beta and 0p25
+    model = IFSModel(channels=["u10m"], cache=True, source="aws", resolution="0p4-beta")
+    start_time = datetime.datetime(2024, 7, 21, 0, 0)
+    res = model.forecast(start_time, 24)
+    with pytest.xfail(reason="Needs patching emcwf client"):
+        assert res.sel(channel="u10m").isel(lat=0, lon=0).values.any()

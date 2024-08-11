@@ -3,6 +3,7 @@ import datetime
 import hashlib
 import shutil
 import os
+import time
 from typing import Literal
 from loguru import logger
 import xarray as xr
@@ -11,12 +12,15 @@ import ecmwf.opendata
 from tqdm import tqdm
 import boto3
 import botocore
+import concurrent.futures
 
 from ...common import LOCAL_CACHE, save_forecast
 from ...utils import ensure_ecmwf_loaded
 
 # example invocation:
 # python -m skyrim.libs.nwp.ifs --date 20230101 --time 1200 --lead_time 36
+
+MODEL_RESOLUTION = {"0p4-beta", "0p25"}
 
 
 # skyrim to ifs mapping
@@ -100,8 +104,6 @@ class IFSModel:
         https://confluence.ecmwf.int/display/FCST/Known+IFS+forecasting+issues
     """
 
-    IFS_LAT = np.linspace(90, -90, 721)
-    IFS_LON = np.linspace(0, 360, 1440, endpoint=False)
     IFS_BUCKET_NAME = "ecmwf-forecasts"
 
     def __init__(
@@ -109,15 +111,27 @@ class IFSModel:
         channels: list[str],
         cache: bool = True,
         source: Literal["aws", "ecmwf", "azure"] = "aws",
+        resolution: str = "0p25",
+        multithread: bool = False,
     ):
         self._cache = cache
         self.source = source
-        self.client = ecmwf.opendata.Client(source=source)
+        if resolution not in MODEL_RESOLUTION:
+            raise ValueError(f"Invalid model resolution: {resolution}")
+        if resolution == "0p25":
+            self.IFS_LAT = np.linspace(90, -90, 721)
+            self.IFS_LON = np.linspace(0, 360, 1440, endpoint=False)
+        else:
+            self.IFS_LAT = np.linspace(90, -90, 451)
+            self.IFS_LON = np.linspace(0, 360, 900, endpoint=False)
+
+        self.client = ecmwf.opendata.Client(source=source, resol=resolution)
         self.model_name = "HRES"
         self.cached_files = []
 
         self.assure_channels_exist(channels)
         self.channels = channels
+        self.multithread = multithread
         ensure_ecmwf_loaded()
         logger.info(f"IFS model initialized with channels: {channels}")
         logger.debug(f"IFS cache location: {self.cache}")
@@ -479,19 +493,66 @@ class IFSModel:
                 "Invalid start time for HRES forecast, must be 00, 06, 12 or 18"
             )
 
+    def _fetch_channel(self, start_time, steps, channel, index):
+        """
+        Fetches the specified channel data from the IFS client.
+
+        Parameters
+        ----------
+        start_time : datetime
+            The start time of the data.
+        steps : int
+            The number of time steps to fetch.
+        channel : str
+            The name of the channel to fetch.
+        index : int
+            The index of the fetched data.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the index and fetched data.
+
+        """
+        ifs_id, ifs_levtype, ifs_level, modifier_func = IFS_Vocabulary.get(channel)
+        cache_path = self._download_ifs_channel_grib_to_cache(
+            ifs_id, ifs_levtype, ifs_level, start_time, steps
+        )
+        if cache_path is None:
+            logger.warning(f"Skipping {channel} due to failed download.")
+            return None, None
+
+        da = xr.open_dataarray(
+            cache_path, engine="cfgrib", backend_kwargs={"indexpath": ""}
+        ).roll(longitude=len(self.IFS_LON) // 2, roll_coords=True)
+
+        data = modifier_func(da.values)
+        return index, data
+
+    async def _fetch_channel_async(self, session, start_time, steps, channel, index):
+        """
+        Asynchronously fetches the specified channel data from the IFS client.
+        """
+        ifs_id, ifs_levtype, ifs_level, modifier_func = IFS_Vocabulary.get(channel)
+        cache_path = await self._download_ifs_channel_grib_to_cache_async(
+            session, ifs_id, ifs_levtype, ifs_level, start_time, steps
+        )
+        if cache_path is None:
+            logger.warning(f"Skipping {channel} due to failed download.")
+            return None, None
+
+        da = xr.open_dataarray(
+            cache_path, engine="cfgrib", backend_kwargs={"indexpath": ""}
+        ).roll(longitude=len(self.IFS_LON) // 2, roll_coords=True)
+
+        data = modifier_func(da.values)
+        return index, data
+
     def fetch_dataarray(
         self,
         start_time: datetime.datetime,
         steps: list[int] = [0, 3, 6],
     ) -> xr.DataArray:
-        """
-        NOTE: The IFS dataarray structure loaded from a GRIB file:
-            - Dimensions ('time', 'latitude', 'longitude') represent the axes of the dataarray.
-            - Longitude values range from -180 to +179.75 degrees, wrapping around the globe.
-            - Latitude values range from 90 (North Pole) to -90 (South Pole) degrees.
-            - The shape of 'da.values' is (time steps, 721 latitudes, 1440 longitudes)
-        """
-
         ifs_dataarray = xr.DataArray(
             data=np.empty(
                 (len(steps), len(self.channels), len(self.IFS_LAT), len(self.IFS_LON))
@@ -499,9 +560,7 @@ class IFSModel:
             dims=["time", "channel", "lat", "lon"],
             coords={
                 "time": start_time
-                + np.array(
-                    [datetime.timedelta(hours=s) for s in steps]
-                ),  # format switches to datetime64
+                + np.array([datetime.timedelta(hours=s) for s in steps]),
                 "channel": self.channels,
                 "lat": self.IFS_LAT,
                 "lon": self.IFS_LON,
@@ -512,32 +571,26 @@ class IFSModel:
             logger.error(f"No IFS data available for {start_time}")
             return ifs_dataarray
         logger.debug(f"Initialized ifs_dataarray with shape: {ifs_dataarray.shape}")
-        for i, channel in tqdm(
-            enumerate(self.channels), desc=f"Fetching IFS for start_time: {start_time}"
-        ):
-            ifs_id, ifs_levtype, ifs_level, modifier_func = IFS_Vocabulary.get(channel)
-            cache_path = self._download_ifs_channel_grib_to_cache(
-                ifs_id, ifs_levtype, ifs_level, start_time, steps
-            )
-            if cache_path is None:
-                logger.warning(f"Skipping {channel} due to failed download.")
-                continue
-            logger.debug(f"Loaded {channel} from {cache_path}")
 
-            # IFS default coordsda [-180, 180], roll to [0, 360]
-            da = xr.open_dataarray(
-                cache_path, engine="cfgrib", backend_kwargs={"indexpath": ""}
-            ).roll(longitude=len(self.IFS_LON) // 2, roll_coords=True)
-
-            logger.debug(f"Fetched channel: {channel}\n")
-            logger.debug(f"cache path: {cache_path}\n")
-            logger.debug(f"Fetched dataarray's shape: {da.shape}")
-
-            # to properly roll the dataarray along its longitude is as follows
-            # da.coords['longitude'] = (da.coords['longitude'] + 360) % 360
-
-            data = modifier_func(da.values)
-            ifs_dataarray[:, i, :, :] = data
+        if self.multithread:
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                futures = [
+                    executor.submit(self._fetch_channel, start_time, steps, channel, i)
+                    for i, channel in enumerate(self.channels)
+                ]
+                for future in futures:  # Removed as_completed
+                    i, data = future.result()
+                    if data is not None:
+                        ifs_dataarray[:, i, :, :] = data
+        else:
+            for i, channel in tqdm(
+                enumerate(self.channels),
+                desc=f"Fetching IFS for start_time: {start_time}",
+                total=len(self.channels),
+            ):
+                i, data = self._fetch_channel(start_time, steps, channel, i)
+                if data is not None:
+                    ifs_dataarray[:, i, :, :] = data
 
         return ifs_dataarray
 
@@ -572,18 +625,28 @@ if __name__ == "__main__":
         help="The lead time in hours from 0 to 240",
         default=default_lead_time,
     )
+    parser.add_argument(
+        "--multithread",
+        action="store_true",
+        help="Use multithreading to fetch data",
+    )
     args = parser.parse_args()
 
     logger.info(f"date (str) set to {args.date}")
     logger.info(f"time (str) set to {args.time}")
     logger.info(f"lead_time (int) set to {args.lead_time} hours")
+    logger.info(f"multithread (bool) set to {args.multithread}")
 
-    model = IFSModel(channels=["u10m", "v10m", "t2m"], cache=False)
+    t = time.time()
+    model = IFSModel(
+        channels=["u10m", "v10m", "t2m"], cache=False, multithread=args.multithread
+    )
+    model.clear_cache()
     forecast = model.predict(
         date=args.date,
         time=args.time,
         lead_time=args.lead_time,
         save=True,
     )
-    print(f"forecast.shape: {forecast.shape}")
-    print(f"model.cached_files: {model.cached_files}")
+    logger.success(f"Prediction completed in {time.time() - t:.2f} seconds.")
+    logger.info(f"forecast.shape: {forecast.shape}")
