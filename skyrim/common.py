@@ -88,7 +88,7 @@ def to_hf(da: xr.DataArray, repo: str, path: str):
     repo (str): The name of the Hugging Face repository.
     path (str): The path within the repository where the DataArray will be stored, no suffix.
 
-    Note:
+    NOTE:
     1/ Hugging Face automatically deduplicates identical values, so naming cannot guarantee access.
     2/ Uploading without zip is not recommended, HF rate limits when too many files are uploaded.
     3/ There is a limit of 10K files per folder as well (apparently).
