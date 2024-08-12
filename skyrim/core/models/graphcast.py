@@ -130,12 +130,12 @@ class GraphcastModel(GlobalModel):
         for n in range(n_steps):
             state = self._predict_one_step(start_time, initial_condition=state)
             logger.success(f"Forecast step {n+1}/{n_steps} completed")
-
             da = self._to_global_da(
                 state[1] if n == 0 else state[1].isel(time=-1).expand_dims("time")
             )
             if channels:
                 da = da.sel(channel=channels)
+            da = da.sel(lat=da.lat[::-1])
             das.append(da)
         # re-set the time coords: as graphcast by default holds delta_t's
         # prediction, i.e. current state, timestamp value is hold at state[0]
