@@ -5,7 +5,9 @@ from skyrim.libs.nwp.ifs import IFSModel
 from earth2studio.lexicon.ifs import IFSLexicon
 from skyrim.core import Skyrim
 from datetime import datetime
-from earth2mip.initial_conditions import get_initial_condition_for_model
+from earth2mip.initial_conditions import (
+    get_initial_condition_for_model,
+)
 
 
 @pytest.mark.skip(reason="in case we fallback to earth2studio")
@@ -17,7 +19,9 @@ def test_ifs_ic_gets_right_fourcastnet():
         channels = skyrim.model.in_channel_names
         ifs_channels = list(set(channels) & set(IFSLexicon.VOCAB.keys()))
         ifs_data = IFS().fetch_ifs_dataarray(dt, ifs_channels)
-        ic_data = get_initial_condition_for_model(skyrim.model.model, skyrim.model.build_datasource(), dt)
+        ic_data = get_initial_condition_for_model(
+            skyrim.model.model, skyrim.model.build_datasource(), dt
+        )
         fails = []
         for i in channels:
             if i not in set(ifs_data["variable"].values):
@@ -43,7 +47,9 @@ def test_ifs_ic_gets_right_from_nwp():
         channels = skyrim.model.in_channel_names
         ifs = IFSModel(channels=channels)
         ifs_data = ifs.fetch_dataarray(dt, steps=[0])
-        ic_data = get_initial_condition_for_model(skyrim.model.model, skyrim.model.build_datasource(), dt)
+        ic_data = get_initial_condition_for_model(
+            skyrim.model.model, skyrim.model.build_datasource(), dt
+        )
         fails = []
         for i in channels:
             ix = channels.index(i)
@@ -54,3 +60,11 @@ def test_ifs_ic_gets_right_from_nwp():
 
         if len(fails):
             raise Exception(f"Failed params {fails}")
+
+
+@pytest.mark.integ
+@pytest.mark.xfail(reason="March IFS 025 is not consistent before 6/3/2024")
+def test_ic_ifs_early_march():
+    start_time = datetime(2024, 3, 1)
+    skyrim = Skyrim("fourcastnet_v2", ic_source="ifs")
+    pred = skyrim.forecast(start_time)

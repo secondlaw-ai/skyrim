@@ -104,7 +104,6 @@ def merge_files(output_file_path: str, input_file_paths: list[str]):
     This is generally not recommended for binary files like GRIB without ensuring compatibility.
     """
     logger.debug(f"Merging {len(input_file_paths)} files into {output_file_path}")
-    breakpoint()
     with output_file_path.open("wb") as merged_file:
         # Ensure the file path is a string for subprocess
         subprocess.run(["cat", *input_file_paths], stdout=merged_file, check=True)

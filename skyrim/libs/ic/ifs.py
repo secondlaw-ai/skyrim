@@ -27,7 +27,9 @@ def _get_filename(time: datetime.datetime, lead_time: str, resolution: str = "0p
         raise Exception("Unknown resolution for IFS")
 
     hour = time.strftime("%Hz")
-    folder_name = "oper" if hour in {"00z", "12z"} else "scda"  # scda=short-cut-off hi-res forecast
+    folder_name = (
+        "oper" if hour in {"00z", "12z"} else "scda"
+    )  # scda=short-cut-off hi-res forecast
 
     date_format = f"%Y%m%d/%Hz/ifs/{resolution}/{folder_name}/%Y%m%d%H%M%S-{lead_time}-{folder_name}-fc.grib2"
     return time.strftime(date_format)
@@ -67,10 +69,16 @@ def get_cache_file_path(path, local_cache_path: str = LOCAL_CACHE):
     try:
         os.makedirs(local_cache_path, exist_ok=True)
     except PermissionError as error:
-        logger.error("Failed to create cache folder, check permissions or set a cache" + " location using the LOCAL_CACHE environment variable")
+        logger.error(
+            "Failed to create cache folder, check permissions or set a cache"
+            + " location using the LOCAL_CACHE environment variable"
+        )
         raise error
     except OSError as error:
-        logger.error("Failed to create cache folder, set a cache" + " location using the LOCAL_CACHE environment variable")
+        logger.error(
+            "Failed to create cache folder, set a cache"
+            + " location using the LOCAL_CACHE environment variable"
+        )
         raise error
     return os.path.join(local_cache_path, filename)
 
@@ -88,10 +96,20 @@ def get(time: datetime.datetime, channels: List[str]):
         logger.debug(f"Multiple datasets loaded from ECMWF repo.")
         dataset_0h = xarray.merge(
             [
-                (l.drop_vars("heightAboveGround") if "heightAboveGround" in l.coords else (l.drop_vars("depthBelowLandLayer") if "depthBelowLandLayer" in l.coords else l))
+                (
+                    l.drop_vars("heightAboveGround")
+                    if "heightAboveGround" in l.coords
+                    else (
+                        l.drop_vars("depthBelowLandLayer")
+                        if "depthBelowLandLayer" in l.coords
+                        else l
+                    )
+                )
                 for l in loaded
             ]
         )
+    if time.date() < datetime.datetime(2024, 3, 6).date():
+        raise Exception("IFS HRES 0.25 only supported after 6/3/2024")
     channel_data = [
         _get_channel(
             c,
