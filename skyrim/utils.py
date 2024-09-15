@@ -114,7 +114,3 @@ def convert_datetime_to_str(
     # Convert each datetime.datetime object to the desired string format
     datetime_str_list = [dt.strftime(fmt) for dt in datetime_array]
     return datetime_str_list
-
-
-if __name__ == "__main__":
-    print(Path(__file__).parent.parent / ".env")

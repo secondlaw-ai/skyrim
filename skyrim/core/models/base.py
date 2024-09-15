@@ -17,7 +17,9 @@ def adjust_lead_time(lead_time: int, step_size: int = 6):
 
 class GlobalModel:
     def __init__(
-        self, model_name: str, ic_source: Literal["cds", "gfs", "ifs"] = "cds"
+        self,
+        model_name: str,
+        ic_source: Literal["cds", "gfs", "ifs"] = "cds",
     ):
         clock = time.time()
         self.model_name = model_name

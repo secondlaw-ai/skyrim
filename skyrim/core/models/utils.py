@@ -30,13 +30,10 @@ def run_basic_inference(
         # add the batch dimenstion
         x = x.unsqueeze(0)
 
-    logger.debug(f"x.shape: {x.shape}")
-
     arrays, times = [], []
     for k, (time, output, _) in enumerate(model(time, x)):
         # (time, output, restart) tuples.
         # output is a tensor with shape (B, len(out_channel_names), len(lat), len(lon))
-        logger.debug(f"output.shape: {output.shape}")
         arrays.append(output.cpu().numpy().squeeze())  # get rid of the batch dimension
         times.append(time)
         if k == n:
