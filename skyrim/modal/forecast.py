@@ -42,7 +42,7 @@ vol = Volume.from_name("forecasts", create_if_missing=True)
 
 
 @app.function(
-    gpu=gpu.A10G(),
+    gpu=gpu.A100(),
     container_idle_timeout=240 * 2,
     timeout=60 * 15,
     image=image,
@@ -59,7 +59,7 @@ def run_inference(*args, **kwargs):
 
 analysis_image = (
     Image.debian_slim()
-    .pip_install("python-dotenv", "jupyterlab", "loguru")
+    .pip_install("python-dotenv", "jupyterlab", "loguru", "scipy", "xarray")
     .env(
         {
             "CDSAPI_KEY": CDSAPI_KEY,
