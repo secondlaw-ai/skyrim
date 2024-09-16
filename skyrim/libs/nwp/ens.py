@@ -464,7 +464,7 @@ class ENSModel:
         date : str
             The date in the format YYYMMDD, e.g. 20180101.
         time : str
-            The time in the format HHMM, e.g. 0300, 1400, etc.
+            The time in the format HHMM, e.g. 0000, 1200, etc.
         lead_time : int, optional
             The lead time in hours 0-240, by default 240.
         save : bool, optional
