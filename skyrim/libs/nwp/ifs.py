@@ -27,6 +27,15 @@ MODEL_RESOLUTION = {"0p4-beta", "0p25"}
 class IFS_Vocabulary:
     """
     Vocabulary for IFS model.
+    
+    When fetched from ECMWF, using ecmwf.opendata, the variables are named as follows:
+    [t2m, d2m] -> {"typeOfLevel": "heightAboveGround", "level": 2}
+    [v10, u10] -> {"typeOfLevel": "heightAboveGround", "level": 10}
+    ['v100', 'u100'] -> {"typeOfLevel":"heightAboveGround", "level": 100}
+    ['tp', 'lsm', 'ssrd', 'sp', 'ssr', 'skt', 'strd', 'asn', 'str', 'ro'] -> {"typeOfLevel": "surface"}
+    ['cape', 'tcwv'] -> {"typeOfLevel": "entireAtmosphere"}
+    ['gh', 't', 'u', 'v', 'r', 'w', 'q', 'vo', 'd'] -> {"typeOfLevel": "isobaricInhPa"}
+    ['msl'] -> {"typeOfLevel": "meanSea"}
 
     NOTE:
     >> list(IFS_Vocabulary.VOCAB.keys()).__len__()
@@ -47,7 +56,7 @@ class IFS_Vocabulary:
             "v100m": "100v::sfc::",
             "t2m": "2t::sfc::",
             "sp": "sp::sfc::",
-            "msl": "msl::sfc::",
+            "msl": "msl::sfc::", #meanSea
             "tcwv": "tcwv::sfc::",
             "tp": "tp::sfc::",
         }
@@ -78,12 +87,13 @@ class IFS_Vocabulary:
     VOCAB = build_vocab()
 
     def __getitem__(self, key):
-        """Allow dictionary-like access (e.g., IFS_Vocabulary['u100'])"""
         return self.VOCAB[key]
 
     def __contains__(self, key):
-        """Allow membership testing (e.g., 'u100' in IFS_Vocabulary)"""
         return key in self.VOCAB
+    
+    def __len__(self):
+        return len(self.VOCAB)
 
     @classmethod
     def get(cls, channel: str) -> str:
@@ -99,6 +109,13 @@ class IFS_Vocabulary:
 # adapted from https://github.com/NVIDIA/earth2studio/blob/main/earth2studio/data/ifs.py
 class IFSModel:
     """
+    
+    from: https://www.ecmwf.int/en/forecasts/datasets/open-data
+        Steps:
+        For times 00z &12z: 0 to 144 by 3, 150 to 240 by 6.
+        For times 06z & 18z: 0 to 90 by 3.
+        Single and Pressure Levels (hPa): 1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50
+
     Additional resources:
         Known IFS forecasting issues:
         https://confluence.ecmwf.int/display/FCST/Known+IFS+forecasting+issues
@@ -238,7 +255,7 @@ class IFSModel:
     def predict(
         self,
         date: str,  # YYYMMDD, e.g. 20180101
-        time: str,  # HHMM, e.g. 0300, 1400, etc
+        time: str,  # HHMM, e.g. 0000, 1200, etc
         lead_time: int = 240,  # in hours 0-240,
         save: bool = False,
         save_config: dict = {},
@@ -251,7 +268,7 @@ class IFSModel:
         date : str
             The date in the format YYYMMDD, e.g. 20180101.
         time : str
-            The time in the format HHMM, e.g. 0300, 1400, etc.
+            The time in the format HHMM, e.g. 0000, 1200, etc.
         lead_time : int, optional
             The lead time in hours 0-240, by default 240.
         save : bool, optional
@@ -517,25 +534,6 @@ class IFSModel:
         ifs_id, ifs_levtype, ifs_level, modifier_func = IFS_Vocabulary.get(channel)
         cache_path = self._download_ifs_channel_grib_to_cache(
             ifs_id, ifs_levtype, ifs_level, start_time, steps
-        )
-        if cache_path is None:
-            logger.warning(f"Skipping {channel} due to failed download.")
-            return None, None
-
-        da = xr.open_dataarray(
-            cache_path, engine="cfgrib", backend_kwargs={"indexpath": ""}
-        ).roll(longitude=len(self.IFS_LON) // 2, roll_coords=True)
-
-        data = modifier_func(da.values)
-        return index, data
-
-    async def _fetch_channel_async(self, session, start_time, steps, channel, index):
-        """
-        Asynchronously fetches the specified channel data from the IFS client.
-        """
-        ifs_id, ifs_levtype, ifs_level, modifier_func = IFS_Vocabulary.get(channel)
-        cache_path = await self._download_ifs_channel_grib_to_cache_async(
-            session, ifs_id, ifs_levtype, ifs_level, start_time, steps
         )
         if cache_path is None:
             logger.warning(f"Skipping {channel} due to failed download.")
