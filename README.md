@@ -148,7 +148,8 @@ See [examples](#examples) section for more.✌️
 ```bash
 conda create -y -n skyenv python=3.10
 conda activate skyenv
-./build.sh
+conda install eccodes python-eccodes -c conda-forge
+pip install . && pip install -r requirements.txt
 ```
 
 ## Examples
@@ -161,16 +162,16 @@ All examples can be run using `forecast` or `modal run skyrim/modal/forecast.py`
 
 ### Example 1: Pick models, initial conditions, lead times
 
-Forecast using `graphcast` model, with ERA5 initial conditions, starting from 2024-04-30T00:00:00 and with a lead time of a week (forecast for the next week, i.e. 168 hours):
+Forecast using `graphcast` model, with ECMWF IFS initial conditions, starting from 2024-04-30T00:00:00 and with a lead time of a week (forecast for the next week, i.e. 168 hours):
 
 ```bash
-forecast --model_name graphcast --initial_conditions cds --date 20240403 -output_dir s3://skyrim-dev --lead_time 168
+forecast --model_name graphcast --initial_conditions ifs --date 20240403 -output_dir s3://skyrim-dev --lead_time 168
 ```
 
 or in modal:
 
 ```bash
-modal run skyrim/modal/forecast.py --model-name graphcast --initial-conditions cds --date 20240403 --output-dir s3://skyrim-dev --lead-time 168
+modal run skyrim/modal/forecast.py --model-name graphcast --initial-conditions ifs --date 20240403 --output-dir s3://skyrim-dev --lead-time 168
 ```
 
 ### Example 2: Store in AWS and then read only what you need

@@ -34,7 +34,7 @@ dependencies = [
   'click',
   'openmeteo-requests',
   'meteostat',
-  'huggingface_hub'
+  'huggingface_hub',
 ]
 
 [project.scripts]
