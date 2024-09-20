@@ -141,6 +141,7 @@ class ENSModel:
         self.cached_files = []
         self.multithread = multithread
         self.numbers = numbers
+        self.model_name = "ENS"
 
         ensure_ecmwf_loaded()
         self.client = ecmwf.opendata.Client(source=source)
@@ -502,5 +503,79 @@ class ENSModel:
         raise NotImplementedError("Snipe method not implemented for ENS model.")
 
 
+def parse_arguments():
+
+    # Ensure that the forecast start time is:
+    #   rounded down to the closest multiple of 6 hours
+    #   at least 12 hours ago from the current time
+    now = datetime.datetime.now()
+    latest_start_time = now.replace(
+        minute=0, second=0, microsecond=0
+    ) - datetime.timedelta(hours=(now.hour % 6 + 12))
+
+    parser = argparse.ArgumentParser(description="Fetch ENS forecast.")
+    parser.add_argument(
+        "--date",
+        type=str,
+        help="The date in the format YYYMMDD, e.g. 20240401.",
+        default=latest_start_time.strftime("%Y%m%d"),
+    )
+    parser.add_argument(
+        "--time",
+        type=str,
+        help="The time in the format HHMM, e.g. 0000, 1200, etc.",
+        default=latest_start_time.strftime("%H%M"),
+    )
+    parser.add_argument(
+        "--lead_time",
+        type=int,
+        help="The lead time in hours 0-360.",
+        default=36,
+    )
+    parser.add_argument(
+        "--channels",
+        nargs="+",
+        type=str,
+        default=["t2m", "u10m", "v10m"],
+        help="The channels to fetch.",
+    )
+    parser.add_argument(
+        "--numbers",
+        nargs="+",
+        type=int,
+        default=[0, 1, 2, 3],
+        help="The member numbers to fetch. '0' is the control forecast.",
+    )
+    parser.add_argument(
+        "--multithread",
+        action="store_true",
+        help="Whether to fetch the forecasts in parallel.",
+    )
+
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    pass
+
+    args = parse_arguments()
+    logger.info(f"date (str) set to {args.date}")
+    logger.info(f"time (str) set to {args.time}")
+    logger.info(f"lead_time (int) set to {args.lead_time}")
+    logger.info(f"channels (list[str]) set to {args.channels}")
+    logger.info(f"numbers (list[int]) set to {args.numbers}")
+    logger.info(f"multithread (bool) set to {args.multithread}")
+
+    t = time.time()
+    model = ENSModel(channels=args.channels, numbers=args.numbers, cache=False)
+    model.clear_cache()
+
+    forecast = model.predict(
+        date=args.date,
+        time=args.time,
+        lead_time=args.lead_time,
+        save=True,
+    )
+
+    logger.success(f"Forecast fetched in {time.time() - t:.2f} seconds.")
+    logger.info(f"forecast.shape: {forecast.shape}")
+    logger.info(f"forecast.nbytes: {forecast.nbytes/1024/1024:.2f} MB")
