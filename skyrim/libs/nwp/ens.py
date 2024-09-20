@@ -1,10 +1,7 @@
 """
 TODO:
 - [ ] Add support to check if the forecast is available before downloading.
-- [ ] Add support for downloading multiple forecasts at once, e.g. for each
-member in parallel.
 - [ ] Add "snipe" method to fetch all available forecasts for a given date and time. 
-
 
 NOTE: 
 When downloaded from opendata: 
@@ -23,6 +20,9 @@ When downloaded from opendata:
         For times 06z & 18z: 0 to 144 by 3
         Single and Pressure Levels (hPa): 1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 50   
 
+Example invocation:
+python -m skyrim.libs.nwp.ens 
+
 """
 
 import argparse
@@ -39,6 +39,7 @@ import xarray as xr
 import numpy as np
 import ecmwf.opendata
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
 
 from ...common import LOCAL_CACHE, save_forecast
 from ...utils import ensure_ecmwf_loaded
@@ -128,6 +129,7 @@ class ENSModel:
         source: Literal["aws", "ecmwf", "azure"] = "aws",
         cache: bool = True,
         multithread: bool = False,
+        max_workers: int = 4,
     ):
         """
         ENS	00 and 12	0 to 144 by 3, 144 to 360 by 6
@@ -140,6 +142,7 @@ class ENSModel:
         self.channels = channels
         self.cached_files = []
         self.multithread = multithread
+        self.max_workers = max_workers
         self.numbers = numbers
         self.model_name = "ENS"
 
@@ -238,92 +241,99 @@ class ENSModel:
         Steps are hours from start_time.
 
         """
-        da = xr.DataArray(
-            data=np.empty(
-                (
-                    len(self.numbers),
-                    len(steps),
-                    len(self.channels),
-                    len(self.LAT),
-                    len(self.LON),
-                )
-            ),
-            dims=["number", "time", "channel", "lat", "lon"],
-            coords={
-                "number": self.numbers,
-                "time": start_time
-                + np.array([datetime.timedelta(hours=step) for step in steps]),
-                "channel": self.channels,
-                "lat": self.LAT,
-                "lon": self.LON,
-            },
-        )
-        # fetch control forecast, member number 0
         das = []
-        if 0 in self.numbers:
-            logger.debug("Fetching control forecast")
-            das.append(
-                self._fetch_dataarray(
-                    start_time=start_time,
-                    steps=steps,
-                    forecast_type="cf",
+        # Use multithreading if enabled
+        if self.multithread:
+            # NOTE: GRIB reading library, isn’t thread-safe
+            # with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+                futures = []
+                for number in self.numbers:
+                    forecast_type = "cf" if number == 0 else "pf"
+                    futures.append(
+                        executor.submit(
+                            self._fetch_member_dataarray,
+                            start_time,
+                            steps,
+                            forecast_type,
+                            number,
+                        )
+                    )
+                for future in tqdm(
+                    as_completed(futures),
+                    total=len(futures),
+                    desc="Downloading members",
+                ):
+                    try:
+                        da_member = future.result()
+                        das.append(da_member)
+                    except Exception as e:
+                        logger.error(f"Error downloading data: {str(e)}")
+                        continue
+        else:
+            for number in tqdm(self.numbers, desc="Downloading members"):
+                forecast_type = "cf" if number == 0 else "pf"
+                da_member = self._fetch_member_dataarray(
+                    start_time, steps, forecast_type, number
                 )
-            )
+                das.append(da_member)
 
-        # fetch perturbed forecast(s)
-        # everything but control, i.e. members 1-50
-        pf_member_numbers = [n for n in self.numbers if n != 0]
-        if len(pf_member_numbers) > 0:
-            logger.debug("Fetching perturbed forecast(s)")
-            das.append(
-                self._fetch_dataarray(
-                    start_time=start_time,
-                    steps=steps,
-                    forecast_type="pf",
-                )
-            )
-
-        # combine control and perturbed forecast
+        # concatenate along 'number' dimension
         da = xr.concat(das, dim="number")
         da = da.assign_coords({"lat": self.LAT, "lon": self.LON})
         da = da.sel(channel=self.channels)
         return da
 
-    def _fetch_dataarray(
+    def _fetch_member_dataarray(
         self,
         start_time: datetime.datetime,
         steps: list[int],
         forecast_type: Literal["cf", "pf"],
+        number: int,
     ) -> xr.DataArray:
-        """Download grib files from ECMWF and return as xr.DataArray"""
+        """Download grib files for a single member and return as xr.DataArray"""
         das = []
         if self.sl_params:
-            logger.debug(f"Downloading {forecast_type} surface variables")
+            logger.debug(
+                f"Downloading {forecast_type} surface variables for member {number}"
+            )
             s_path = self._download_levels_to_cahce(
-                start_time, steps, forecast_type=forecast_type, lvtype="sfc"
+                start_time,
+                steps,
+                forecast_type=forecast_type,
+                lvtype="sfc",
+                number=number,
             )
             logger.debug(f"Loading data from {s_path}")
-            das.append(
-                load_ifs_grib_data(s_path, filter_by_keys={"dataType": forecast_type})
+            da_s = load_ifs_grib_data(
+                s_path, filter_by_keys={"dataType": forecast_type, "number": number}
             )
+            das.append(da_s)
 
         if self.pl_params:
-            logger.debug(f"Downloading {forecast_type} pressure level variables")
+            logger.debug(
+                f"Downloading {forecast_type} pressure level variables for member {number}"
+            )
             p_path = self._download_levels_to_cahce(
-                start_time, steps, forecast_type=forecast_type, lvtype="pl"
+                start_time,
+                steps,
+                forecast_type=forecast_type,
+                lvtype="pl",
+                number=number,
             )
             logger.debug(f"Loading data from {p_path}")
-            das.append(
-                load_ifs_grib_data(p_path, filter_by_keys={"dataType": forecast_type})
+            da_p = load_ifs_grib_data(
+                p_path, filter_by_keys={"dataType": forecast_type, "number": number}
             )
+            das.append(da_p)
 
         da = xr.concat(das, dim="variable").roll(
-            longitude=len(self.LAT), roll_coords=True
+            longitude=len(self.LON) // 2, roll_coords=True
         )
         da = da.rename({"latitude": "lat", "longitude": "lon", "variable": "channel"})
         if "number" not in da.dims:
             da = da.expand_dims("number", axis=0)
-
+        da = da.assign_coords({"number": [number]})
         return da.transpose("number", "time", "channel", "lat", "lon")
 
     def _download_levels_to_cahce(
@@ -332,6 +342,7 @@ class ENSModel:
         steps: list[int],
         forecast_type: Literal["cf", "pf"],
         lvtype: Literal["sfc", "pl"],
+        number: int = None,
     ) -> str:
 
         request_body = {
@@ -344,13 +355,7 @@ class ENSModel:
         }
 
         if forecast_type == "pf":
-            request_body = request_body | {
-                "number": [n for n in self.numbers if n != 0]
-            }
-        elif forecast_type != "cf":
-            raise Exception(
-                f"Invalid forecast type: {forecast_type}. Should be 'cf' or 'pf'"
-            )
+            request_body["number"] = number
 
         if lvtype == "pl":
             request_body["levelist"] = self.levelist
@@ -551,6 +556,12 @@ def parse_arguments():
         action="store_true",
         help="Whether to fetch the forecasts in parallel.",
     )
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=8,
+        help="The maximum number of workers to use for fetching forecasts.",
+    )
 
     return parser.parse_args()
 
@@ -566,7 +577,13 @@ if __name__ == "__main__":
     logger.info(f"multithread (bool) set to {args.multithread}")
 
     t = time.time()
-    model = ENSModel(channels=args.channels, numbers=args.numbers, cache=False)
+    model = ENSModel(
+        channels=args.channels,
+        numbers=args.numbers,
+        cache=False,
+        multithread=args.multithread,
+        max_workers=args.max_workers,
+    )
     model.clear_cache()
 
     forecast = model.predict(
