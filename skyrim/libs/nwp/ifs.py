@@ -27,7 +27,7 @@ MODEL_RESOLUTION = {"0p4-beta", "0p25"}
 class IFS_Vocabulary:
     """
     Vocabulary for IFS model.
-    
+
     When fetched from ECMWF, using ecmwf.opendata, the variables are named as follows:
     [t2m, d2m] -> {"typeOfLevel": "heightAboveGround", "level": 2}
     [v10, u10] -> {"typeOfLevel": "heightAboveGround", "level": 10}
@@ -56,7 +56,7 @@ class IFS_Vocabulary:
             "v100m": "100v::sfc::",
             "t2m": "2t::sfc::",
             "sp": "sp::sfc::",
-            "msl": "msl::sfc::", #meanSea
+            "msl": "msl::sfc::",  # meanSea
             "tcwv": "tcwv::sfc::",
             "tp": "tp::sfc::",
         }
@@ -91,7 +91,7 @@ class IFS_Vocabulary:
 
     def __contains__(self, key):
         return key in self.VOCAB
-    
+
     def __len__(self):
         return len(self.VOCAB)
 
@@ -109,7 +109,7 @@ class IFS_Vocabulary:
 # adapted from https://github.com/NVIDIA/earth2studio/blob/main/earth2studio/data/ifs.py
 class IFSModel:
     """
-    
+
     from: https://www.ecmwf.int/en/forecasts/datasets/open-data
         Steps:
         For times 00z &12z: 0 to 144 by 3, 150 to 240 by 6.
@@ -606,7 +606,7 @@ if __name__ == "__main__":
     default_lead_time = 36
 
     # Initialize the argument parser
-    parser = argparse.ArgumentParser(description="Run IFS/HRES weather predictions.")
+    parser = argparse.ArgumentParser(description="Fetch IFS/HRES forecast.")
     parser.add_argument(
         "--date",
         help="The date in YYYMMDD format, e.g., 20230101",
@@ -622,6 +622,12 @@ if __name__ == "__main__":
         type=int,
         help="The lead time in hours from 0 to 240",
         default=default_lead_time,
+    )
+    parser.add_argument(
+        "--channels",
+        nargs="+",
+        default=["u10m", "v10m", "t2m"],
+        help="The channels to fetch",
     )
     parser.add_argument(
         "--multithread",
@@ -646,5 +652,6 @@ if __name__ == "__main__":
         lead_time=args.lead_time,
         save=True,
     )
-    logger.success(f"Prediction completed in {time.time() - t:.2f} seconds.")
+    logger.success(f"Forecast fetched in {time.time() - t:.2f} seconds.")
     logger.info(f"forecast.shape: {forecast.shape}")
+    logger.info(f"forecast.nbytes: {forecast.nbytes/1024/1024:.2f} MB")
