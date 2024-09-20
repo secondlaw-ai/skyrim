@@ -117,6 +117,21 @@ class ENS_Vocabulary:
 
 
 class ENSModel:
+    """
+    ENS is an ensemble of 51 forecasts with a horizontal resolution of around 9 km.
+    It comprises one control forecast (CNTL) plus 50 forecasts each with slightly altered
+    initial conditions and slightly altered model physics.
+    Forecast lead time is 15 days.
+
+    ENS	00 and 12	0 to 144 by 3, 144 to 360 by 6
+    ENS	06 and 18	0 to 144 by 3
+
+    Additional information:
+        https://confluence.ecmwf.int/display/FUG/Section+2.1.2.1+ENS+-+Ensemble+Forecasts
+        https://www.ecmwf.int/en/forecasts/documentation-and-support/medium-range-forecasts
+
+    """
+
     LAT = np.linspace(90, -90, 721)
     LON = np.linspace(0, 360, 1440, endpoint=False)
     MODEL_NAME = "ENS"
@@ -131,10 +146,7 @@ class ENSModel:
         multithread: bool = False,
         max_workers: int = 4,
     ):
-        """
-        ENS	00 and 12	0 to 144 by 3, 144 to 360 by 6
-        ENS	06 and 18	0 to 144 by 3
-        """
+
         # TODO: check when the resolution of this product became 0.25
 
         self._cache = cache
