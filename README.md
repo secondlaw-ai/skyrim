@@ -230,7 +230,9 @@ Currently supported models are:
 - [x] [DLWP](https://agupubs.onlinelibrary.wiley.com/doi/10.1029/2020MS002109)
 - [x] [(NWP) ECMWF IFS (HRES)](https://www.ecmwf.int/en/forecasts/documentation-and-support/changes-ecmwf-model) -- [notebook](https://github.com/secondlaw-ai/skyrim/blob/master/notebooks/02_ifs_model.ipynb)
 - [x] [(NWP) NOAA GFS](https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast) -- [notebook](https://github.com/secondlaw-ai/skyrim/blob/master/notebooks/03_gfs_model.ipynb)
+- [x] [(NWP) ECMWF ENS](https://confluence.ecmwf.int/display/FUG/Section+2.1.2.1+ENS+-+Ensemble+Forecasts)
 - [ ] [(NWP) ICON](https://www.dwd.de/EN/ourservices/nwp_forecast_data/nwp_forecast_data.html)
+- [ ] [Aurora](https://github.com/microsoft/aurora)
 - [ ] [Fuxi](https://www.nature.com/articles/s41612-023-00512-1)
 - [ ] [Nano MetNet](https://arxiv.org/abs/2306.06079)
 
