@@ -186,22 +186,26 @@ class ENSModel:
     @property
     def sl_params(self) -> list[str]:
         """Get surface level parameters, in ENS lexicon"""
-        return [
-            ens_id
-            for channel in self.channels
-            for ens_id, ens_levtype, _ in [self.VOCAB[channel].split("::")]
-            if ens_levtype == "sfc"
-        ]
+        return sorted(
+            set(
+                ens_id
+                for channel in self.channels
+                for ens_id, ens_levtype, _ in [self.VOCAB[channel].split("::")]
+                if ens_levtype == "sfc"
+            )
+        )
 
     @property
     def pl_params(self) -> list[str]:
         """Get pressure level parameters, in ENS lexicon"""
-        return [
-            ens_id
-            for channel in self.channels
-            for ens_id, ens_levtype, level in [self.VOCAB[channel].split("::")]
-            if ens_levtype == "pl"
-        ]
+        return sorted(
+            set(
+                ens_id
+                for channel in self.channels
+                for ens_id, ens_levtype, level in [self.VOCAB[channel].split("::")]
+                if ens_levtype == "pl"
+            )
+        )
 
     @property
     def levelist(self) -> list[int]:
