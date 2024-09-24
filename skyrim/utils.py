@@ -1,9 +1,9 @@
-from dotenv import load_dotenv
-from pathlib import Path
 import os
-from loguru import logger
 import numpy as np
 import datetime
+from dotenv import load_dotenv
+from pathlib import Path
+from loguru import logger
 from typing import List
 
 
@@ -114,3 +114,79 @@ def convert_datetime_to_str(
     # Convert each datetime.datetime object to the desired string format
     datetime_str_list = [dt.strftime(fmt) for dt in datetime_array]
     return datetime_str_list
+
+
+import os
+import aiohttp
+import aiofiles
+import asyncio
+from tqdm.asyncio import tqdm
+
+
+async def download_file_async(
+    session: aiohttp.ClientSession,
+    file_url: str,
+    destination_folder: str,
+    chunk_size: int = 1024
+    * 1024
+    * 3,  # for smaller files can reduce this, or increase if you have fast connection
+):
+    local_filename = os.path.join(destination_folder, file_url.split("/")[-1])
+    async with session.get(file_url) as response:
+        response.raise_for_status()
+        total_size = int(response.headers.get("content-length", 0))
+        async with aiofiles.open(local_filename, "wb") as f:
+            progress = tqdm(total=total_size, unit="iB", unit_scale=True)
+            async for chunk in response.content.iter_chunked(chunk_size):
+                if chunk:
+                    await f.write(chunk)
+                    progress.update(len(chunk))
+            progress.close()
+    return local_filename
+
+
+async def fast_fetch_async(urls: list[str], destination_folder: str = ".data"):
+    # Ensure destination folder exists
+    if not os.path.exists(destination_folder):
+        os.makedirs(destination_folder)
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for file_url in urls:
+            tasks.append(download_file_async(session, file_url, destination_folder))
+        return await asyncio.gather(*tasks)
+
+
+def fast_fetch(urls: list[str], destination_folder: str = ".data"):
+    """Fast fetch multiple files and download them to a destination folder."""
+    return asyncio.run(fast_fetch_async(urls, destination_folder))
+
+
+def large_download(url, destination, chunk_size=1024 * 1024):  # 1 MB chunk size
+    """Large file download with progress bar and resume support."""
+    if os.path.exists(destination):
+        resume_header = {"Range": f"bytes={os.path.getsize(destination)}-"}
+    else:
+        resume_header = None
+
+    with requests.get(url, headers=resume_header, stream=True) as response:
+        if response.status_code == 206:
+            print("Resuming download...")
+        elif response.status_code != 200:
+            response.raise_for_status()
+
+        total_size = int(response.headers.get("content-length", 0))
+        mode = "ab" if resume_header else "wb"
+        with open(destination, mode) as f:
+            progress = tqdm(
+                total=total_size,
+                unit="iB",
+                unit_scale=True,
+                initial=os.path.getsize(destination) if resume_header else 0,
+            )
+            for chunk in response.iter_content(chunk_size=chunk_size):
+                if chunk:  # Filter out keep-alive new chunks
+                    f.write(chunk)
+                    progress.update(len(chunk))
+            progress.close()
+    print(f"Download completed: {destination}")
+    return destination

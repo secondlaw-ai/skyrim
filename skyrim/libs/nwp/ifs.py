@@ -4,15 +4,15 @@ import hashlib
 import shutil
 import os
 import time
-from typing import Literal
-from loguru import logger
 import xarray as xr
 import numpy as np
 import ecmwf.opendata
-from tqdm import tqdm
 import boto3
 import botocore
 import concurrent.futures
+from typing import Literal
+from loguru import logger
+from tqdm import tqdm
 
 from ...common import LOCAL_CACHE, save_forecast
 from ...utils import ensure_ecmwf_loaded
@@ -20,7 +20,12 @@ from ...utils import ensure_ecmwf_loaded
 # example invocation:
 # python -m skyrim.libs.nwp.ifs --date 20230101 --time 1200 --lead_time 36
 
-MODEL_RESOLUTION = {"0p4-beta", "0p25"}
+MODEL_RESOLUTION = {"0p4-beta", "0p25", "0p10"}
+GRIDS = {
+    "0p4-beta": (np.linspace(90, -90, 451), np.linspace(0, 360, 900, endpoint=False)),
+    "0p25": (np.linspace(90, -90, 721), np.linspace(0, 360, 1440, endpoint=False)),
+    "0p10": (np.linspace(90, -90, 2560), np.linspace(0, 360, 5120, endpoint=False)),
+}
 
 
 # skyrim to ifs mapping
@@ -110,7 +115,7 @@ class IFSModel:
         self,
         channels: list[str],
         cache: bool = True,
-        source: Literal["aws", "ecmwf", "azure"] = "aws",
+        source: Literal["aws", "ecmwf", "azure", "ncar"] = "aws",
         resolution: str = "0p25",
         multithread: bool = False,
     ):
@@ -118,17 +123,11 @@ class IFSModel:
         self.source = source
         if resolution not in MODEL_RESOLUTION:
             raise ValueError(f"Invalid model resolution: {resolution}")
-        if resolution == "0p25":
-            self.IFS_LAT = np.linspace(90, -90, 721)
-            self.IFS_LON = np.linspace(0, 360, 1440, endpoint=False)
-        else:
-            self.IFS_LAT = np.linspace(90, -90, 451)
-            self.IFS_LON = np.linspace(0, 360, 900, endpoint=False)
+        self.IFS_LAT, self.IFS_LON = GRIDS[resolution]
 
         self.client = ecmwf.opendata.Client(source=source, resol=resolution)
         self.model_name = "HRES"
         self.cached_files = []
-
         self.assure_channels_exist(channels)
         self.channels = channels
         self.multithread = multithread

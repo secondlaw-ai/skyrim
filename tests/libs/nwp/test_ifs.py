@@ -3,9 +3,9 @@ import os
 import datetime
 import numpy as np
 import xarray as xr
+import hashlib
 from unittest.mock import patch
 from unittest.mock import MagicMock
-import hashlib
 from skyrim.libs.nwp.ifs import IFSModel, IFS_Vocabulary
 
 
@@ -178,3 +178,23 @@ def test_ifs_04_resolution_recent():
     res = model.forecast(start_time, 24)
     with pytest.xfail(reason="Needs patching emcwf client"):
         assert res.sel(channel="u10m").isel(lat=0, lon=0).values.any()
+
+
+def test_ifs_regresion_04_1():
+    model = IFSModel(channels=["u10m"], cache=True, source="aws", resolution="0p4-beta")
+    start_time = datetime.datetime(2023, 1, 18, 0, 0)
+    res = model.forecast(start_time, 24)
+    assert (
+        res.sel(channel="u10m").isel(lat=51, lon=0).mean().values.item()
+        == 3.8484271240234373
+    )
+
+
+def test_ifs_regression_025_1():
+    model = IFSModel(channels=["t2m"], cache=True, source="aws", resolution="0p25")
+    start_time = datetime.datetime(2024, 8, 1, 0, 0)
+    res = model.forecast(start_time, 24)
+    assert (
+        res.sel(channel="t2m").isel(lat=51, lon=0).mean().values.item()
+        == 279.394716796875
+    )

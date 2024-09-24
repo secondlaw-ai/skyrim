@@ -4,6 +4,7 @@ notebooks/pg*.ipynb
 notebooks/*.csv
 notebooks/*.nc
 .cache.pkl
+.data
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

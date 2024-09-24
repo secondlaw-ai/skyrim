@@ -35,6 +35,8 @@ dependencies = [
   'openmeteo-requests',
   'meteostat',
   'huggingface_hub',
+  'dask',
+  'netCDF4'
 ]
 
 [project.scripts]
