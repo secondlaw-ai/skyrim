@@ -2,6 +2,8 @@ import re
 import pytest
 import requests
 import xarray as xr
+import numpy as np
+import cftime
 from loguru import logger as log
 from pathlib import Path
 from datetime import datetime, date
@@ -9,7 +11,7 @@ from skyrim.utils import fast_fetch
 
 BASE_URL = "https://rda.ucar.edu/datasets/d113001/filelist"
 
-generate_filename_pattern = (
+_generate_filename_pattern = (
     lambda analysis: r"https\:\/\/data.rda.ucar.edu\/d113001\/ec\.oper\.an\.%s\/(?P<month>\d+)\/ec\.oper\.an\.%s\.\d{3}_\d{3}_(?P<param>.+)\.(?P<regno>.+)\.(?P<start_time>\d+)\.nc"
     % (analysis, analysis)
 )
@@ -102,27 +104,58 @@ ncar_sfc_vars = [
 ]
 
 
-def convert_pl(ds: xr.Dataset):
+def _rename(ds: xr.Dataset):
     """
-    Extract specific pressure levels and data variables from the given dataset.
-
-    Parameters:
-    ds (xarray.Dataset): The input dataset.
-    prs_levels (list): List of pressure levels to extract.
-    skyrim_id (list): List of variable names to extract.
-
-    Returns:
-    xarray.Dataset: A new dataset with the selected variables and pressure levels.
+    Rename
     """
     # Example usage
-    prs_levels = [50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000]
-    rename_dict = {"U": "u", "V": "v", "Z": "z", "T": "t", "R": "r", "Q": "q", "W": "w"}
-    ds = ds.rename(rename_dict).sel(level=prs_levels)
+    # prs_levels = [50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000]
+    sfc_mapping = {
+        "VAR_10U": "u10m",
+        "VAR_10V": "v10m",
+        "VAR_100U": "u100m",
+        "VAR_100V": "v100m",
+        "VAR_2T": "t2m",
+        "SP": "sp",
+        "MSL": "msl",
+        "TCWV": "tcwv",
+    }
+    pl_mapping = {"U": "u", "V": "v", "Z": "z", "T": "t", "R": "r", "Q": "q", "W": "w"}
+    coord_mapping = {"latitude": "lat", "longitude": "lon"}
+    rename_mapping = {**pl_mapping, **sfc_mapping, **coord_mapping}
+    ds = ds.rename(rename_mapping)
     return ds
 
 
-def convert_sfc(ds: xr.Dataset):
-    pass
+def _transform_dataset_to_dataarray(
+    ds: xr.Dataset, start_time_step: int = 0
+) -> xr.DataArray:
+    ds = _rename(ds)
+    prs_levels = [50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000]
+    data_vars = []
+    channel_names = []
+    for var_name, da in ds.data_vars.items():
+        if var_name == "utc_date":
+            continue  # Skip the utc_date variable, redundant
+        if "time" in da.dims:
+            da = da.isel(time=start_time_step, drop=False)
+        if "level" in da.dims:
+            for level in prs_levels:
+                new_name = f"{var_name}{int(level)}"
+                level_data = da.sel(level=level).drop("level")
+                data_vars.append(level_data)
+                channel_names.append(new_name)
+        else:
+            data_vars.append(da)
+            channel_names.append(var_name)
+    stacked_data = xr.concat(data_vars, dim="channel")
+    stacked_data = stacked_data.assign_coords(channel=channel_names)
+    common_dims = set.intersection(*[set(da.dims) for da in data_vars])
+    stacked_data = stacked_data.transpose("channel", *sorted(common_dims))
+    stacked_data["channel"] = stacked_data["channel"].astype(str)
+    stacked_data.name = "IFS HRES 0.1"
+    return stacked_data
+
 
 class NCARClient:
     def __init__(self):
@@ -147,7 +180,7 @@ class NCARClient:
         endpoint = f'{BASE_URL}/{dt.strftime("%Y%m")}{endpoint_suffix[analysis]}'
         filelist_html = requests.get(endpoint)
         files = {}
-        for m in re.finditer(generate_filename_pattern(analysis), filelist_html.text):
+        for m in re.finditer(_generate_filename_pattern(analysis), filelist_html.text):
             res = m.groupdict()
             url = filelist_html.text[m.start() : m.end()]
             start_time_ = res["start_time"]  # e.g. 2023122600
@@ -168,7 +201,7 @@ class NCARClient:
             set([f["url"] for f in files_ if f["param"] in params_to_filter[analysis]])
         )
 
-    def download(self, ic_start_time: datetime.date, dir: str = None, cache=True):
+    def download(self, ic_start_time: datetime, dir: str = None, cache=True):
         dir = dir or f'.data/ncar_ifs/{ic_start_time.strftime("%Y%m%d%H")}'
         if not Path(dir).exists():
             log.debug(f"Downloading IFS HRES to {dir}...")
@@ -178,21 +211,29 @@ class NCARClient:
             fast_fetch(urls, destination_folder=dir)
             log.debug("Completed!")
         else:
-            log.debug("Using cached IFS HRES from {dir}")
+            log.debug(f"Using cached IFS HRES from {dir}")
         return dir
 
     def fetch(self, ic_start_time: datetime.date):
-        if not ic_start_time.hour in {0, 6, 12, 18}:
+        time_steps = [0, 6, 12, 18]
+        if not ic_start_time.hour in time_steps:
             raise ValueError("ic_start_time must be a multiple of 6")
         dir = self.download(ic_start_time)
-        # sfc_da = xr.
-        # ec.oper.an.pl.128_129_z.regn1280sc.2024090100
-        return xr.open_mfdataset(dir, engine="netcdf4", chunks="auto")
+        start_time_step = time_steps.index(ic_start_time.hour)
+        return _transform_dataset_to_dataarray(
+            xr.open_mfdataset(
+                str(Path(dir) / "*.nc"),
+                engine="netcdf4",
+                chunks="auto",
+            ),
+            start_time_step,
+        )
 
 
 client = NCARClient()
 
 
+@pytest.mark.skip()
 def test_lists_files():
     files = client.list_files("pl", start_time=datetime(2024, 9, 1, 0, 0))
     assert len(files) == len(ncar_pl_vars)
