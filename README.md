@@ -233,7 +233,8 @@ Currently supported models are:
 - [x] [(NWP) ECMWF ENS](https://confluence.ecmwf.int/display/FUG/Section+2.1.2.1+ENS+-+Ensemble+Forecasts)
 - [ ] [(NWP) ICON](https://www.dwd.de/EN/ourservices/nwp_forecast_data/nwp_forecast_data.html)
 - [ ] [Aurora](https://github.com/microsoft/aurora)
-- [ ] [Fuxi](https://www.nature.com/articles/s41612-023-00512-1)
+- [X] [FuXi](https://www.nature.com/articles/s41612-023-00512-1)
+- [X] [FengWu](https://arxiv.org/pdf/2304.02948)
 - [ ] [Nano MetNet](https://arxiv.org/abs/2306.06079)
 
 ### License
@@ -241,12 +242,10 @@ Currently supported models are:
 For detailed information regarding licensing, please refer to the license details provided on each model's main homepage, which we link to from each of the corresponding components within our repository.
 
 - **Pangu Weather** : [Original](https://github.com/198808xc/Pangu-Weather), [ECMWF](https://github.com/ecmwf-lab/ai-models-panguweather), [NVIDIA](https://github.com/NVIDIA/earth2mip)
-
 - **FourcastNet** : [Original](https://github.com/NVlabs/FourCastNet), [ECMWF](https://github.com/ecmwf-lab/ai-models-fourcastnetv2),[NVIDIA](https://github.com/NVIDIA/earth2mip)
-
 - **Graphcast** : [Original](https://github.com/google-deepmind/graphcast), [ECMWF](https://github.com/ecmwf-lab/ai-models-graphcast), [NVIDIA](https://github.com/NVIDIA/earth2mip)
-
 - **Fuxi**: [Original](https://github.com/tpys/FuXi)
+- **FengWu** [Original](https://github.com/OpenEarthLab/FengWu)
 
 ## Roadmap
 
@@ -264,7 +263,7 @@ All in [here](./CONTRIBUTING.md) ✌️
 
 ## Acknowledgements
 
-Skyrim is built on top of NVIDIA's [earth2mip](https://github.com/NVIDIA/earth2mip) and ECMWF's [ai-models](https://github.com/ecmwf-lab/ai-models). Definitely check them out!
+Skyrim is built on top of NVIDIA's [earth2mip](https://github.com/NVIDIA/earth2mip), [earth2studio](https://github.com/NVIDIA/earth2studio), and ECMWF's [ai-models](https://github.com/ecmwf-lab/ai-models). Definitely check them out!
 
 ## Other Useful Resources
 
