@@ -33,17 +33,19 @@ def ensure_ecmwf_loaded():
 
 def ensure_cds_loaded():
     """Currently, earth2mip requires CDS env to be loaded in /root/.cdsapi"""
-    if Path("~/.cdsapirc").expanduser().exists():
-        return True
+    cdsapirc_path = Path("~/.cdsapirc").expanduser()
+    if cdsapirc_path.exists():
+        logger.info(f"CDS API token already exists at {cdsapirc_path}")
     else:
         load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
         cds_key = os.environ.get("CDSAPI_KEY")
         cds_url = os.environ.get("CDSAPI_URL")
+        logger.debug(f"cds_key: {cds_key}, cds_url: {cds_url}")
         logger.info(f"Gathering CDS API key from environment...")
         if not cds_key:
             raise Exception("CDS API config not found in the environment.")
-        Path("~/.cdsapirc").expanduser().write_text(f"key: {cds_key}\nurl: {cds_url}")
-        logger.success(f"Successfully wrote CDS API key to /root/.cdsapi")
+        cdsapirc_path.write_text(f"key: {cds_key}\nurl: {cds_url}")
+        logger.success(f"Successfully wrote CDS API token {cdsapirc_path}")
 
 
 def convert_datetime64_to_datetime(
