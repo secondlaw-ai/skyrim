@@ -21,6 +21,8 @@ from ...utils import ensure_ecmwf_loaded
 # python -m skyrim.libs.nwp.ifs --date 20230101 --time 1200 --lead_time 36
 
 MODEL_RESOLUTION = {"0p4-beta", "0p25", "0p10"}
+
+# lat, lon
 GRIDS = {
     "0p4-beta": (np.linspace(90, -90, 451), np.linspace(0, 360, 900, endpoint=False)),
     "0p25": (np.linspace(90, -90, 721), np.linspace(0, 360, 1440, endpoint=False)),
@@ -124,7 +126,6 @@ class IFSModel:
         if resolution not in MODEL_RESOLUTION:
             raise ValueError(f"Invalid model resolution: {resolution}")
         self.IFS_LAT, self.IFS_LON = GRIDS[resolution]
-
         self.client = ecmwf.opendata.Client(source=source, resol=resolution)
         self.model_name = "HRES"
         self.cached_files = []

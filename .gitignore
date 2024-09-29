@@ -5,6 +5,7 @@ notebooks/*.csv
 notebooks/*.nc
 .cache.pkl
 .data
+*.nc
 
 ### Python ###
 # Byte-compiled / optimized / DLL files

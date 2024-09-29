@@ -1,0 +1,7 @@
+name: myenv
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - esmpy # needed for regridder in this order
+  - xesmf
