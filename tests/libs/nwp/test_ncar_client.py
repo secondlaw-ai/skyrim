@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 from datetime import datetime
 from skyrim.utils import fast_fetch
 from skyrim.libs.nwp.ifs import IFSModel, GRIDS
@@ -8,6 +9,9 @@ from skyrim.libs.nwp.ncar_client import (
     ncar_pl_vars,
     SKYRIM_IFS_VARS,
 )
+
+GERMANY_LAT = slice(55, 47)
+GERMANY_LON = slice(5, 16)
 
 client = NCARClient()
 
@@ -52,11 +56,10 @@ class TestValues:
         assert np.allclose(self.regridded_da.lat.values, LAT)
         assert np.allclose(self.regridded_da.lon.values, LON)
 
-    def test_closeness(self):
-        germany_lat = slice(55, 47)
-        germany_lon = slice(5, 16)
-        ifs_25_DE = self.ifs_25.sel(lat=germany_lat, lon=germany_lon)
-        regridded_da_DE = self.regridded_da.sel(lat=germany_lat, lon=germany_lon)
+    def test_closeness_with_ifs(self):
+        # closeness with IFS 0.25 resolution:
+        ifs_25_DE = self.ifs_25.sel(lat=GERMANY_LAT, lon=GERMANY_LON)
+        regridded_da_DE = self.regridded_da.sel(lat=GERMANY_LAT, lon=GERMANY_LON)
         # %1.5 difference in values
         x, y = (
             regridded_da_DE.sel(channel="t2m").values,
@@ -68,3 +71,20 @@ class TestValues:
             ifs_25_DE.sel(channel="u10m").values,
         )
         assert np.allclose(x.mean(), y.mean(), rtol=0.015)
+
+    @pytest.mark.skip(
+        reason="in case different regridding method is used, conversative preserves stats the most"
+    )
+    def test_regridding_stats(self):
+        da_DE = self.da.sel(lat=GERMANY_LAT, lon=GERMANY_LON)
+        regridded_da_DE = self.regridded_da.sel(lat=GERMANY_LAT, lon=GERMANY_LON)
+        assert np.allclose(
+            da_DE.sel(channel="t2m").values.mean(),
+            regridded_da_DE.sel(channel="t2m").values.mean(),
+            rtol=0.001,
+        )
+        assert np.allclose(
+            da_DE.sel(channel="u10m").values.mean(),
+            regridded_da_DE.sel(channel="u10m").values.mean(),
+            rtol=0.001,
+        )
