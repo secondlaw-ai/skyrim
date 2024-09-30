@@ -1,9 +1,9 @@
 import time
 import datetime
-from typing import List
 from loguru import logger
 import xarray as xr
-from earth2studio.models.px import FuXi
+from typing import List
+from earth2studio.models.px import FengWu
 from earth2studio.data import GFS, IFS, CDS
 from earth2studio.io import XarrayBackend
 import earth2studio.run as run
@@ -11,47 +11,38 @@ from .base import GlobalModel
 
 
 # fmt: off
-CHANNELS = ["z50", "z100", "z150", "z200", "z250", "z300", "z400", "z500", "z600", "z700",
-            "z850", "z925", "z1000", "t50", "t100", "t150", "t200", "t250", "t300", "t400",
-            "t500", "t600", "t700", "t850", "t925", "t1000", "u50", "u100", "u150", "u200", 
-            "u250", "u300", "u400", "u500", "u600", "u700", "u850", "u925", "u1000", "v50",
-            "v100", "v150", "v200", "v250", "v300", "v400", "v500", "v600", "v700", "v850",
-            "v925", "v1000", "r50", "r100", "r150", "r200", "r250", "r300", "r400", "r500", 
-            "r600", "r700", "r850", "r925", "r1000", "t2m", "u10m", "v10m", "msl","tp"
-            ]
+CHANNELS =  [
+    "u10m", "v10m", "t2m", "msl", "z50", "z100", "z150", "z200", "z250", "z300",
+    "z400", "z500", "z600", "z700", "z850", "z925", "z1000", "q50", "q100", "q150",
+    "q200", "q250", "q300", "q400", "q500", "q600", "q700", "q850", "q925", "q1000",
+    "u50", "u100", "u150", "u200", "u250", "u300", "u400", "u500", "u600", "u700", 
+    "u850", "u925", "u1000", "v50", "v100", "v150", "v200", "v250", "v300", "v400",
+    "v500", "v600", "v700", "v850", "v925", "v1000", "t50", "t100", "t150", "t200",
+    "t250", "t300", "t400", "t500", "t600", "t700", "t850", "t925", "t1000",
+]
 # fmt: on
 
 
-class FuxiModel(GlobalModel):
+class FengwuModel(GlobalModel):
     """
-    From:
-    https://github.com/NVIDIA/earth2studio/blob/68dd00bd76be8abc90badd39d0f51f26294ce526/earth2studio/models/px/fuxi.py#L116-L120
-
-        FuXi weather model consists of three auto-regressive U-net transfomer models with
-        a time-step size of 6 hours. The three models are trained to predict short (5days),
-        medium (10 days) and longer (15 days) forecasts respectively. FuXi operates on
-        0.25 degree lat-lon grid (south-pole including) equirectangular grid with 70
-        atmospheric/surface variables. This model uses two time-steps as an input.
-
-    - https://arxiv.org/abs/2306.12873
-        The performance evaluation demonstrates that FuXi has forecast performance comparable to ECMWF
-        ensemble mean (EM) in 15-day forecasts. FuXi surpasses the skillful forecast lead time achieved 
-        by ECMWF HRES by extending the lead time for Z500 from 9.25 to 10.5 days and 
-        for T2M from 10 to 14.5 days.
+    From: 
+    https://github.com/NVIDIA/earth2studio/blob/68dd00bd76be8abc90badd39d0f51f26294ce526/earth2studio/models/px/fengwu.py#L113-L125
     
-    - https://github.com/tpys/FuXi
-        The variable 'Z' represents geopotential and not geopotential height.
-        The variable 'TP' represents total precipitation accumulated over a period of 6 hours.
+        FengWu (operational) weather model consists of single auto-regressive model with
+        a time-step size of 6 hours. FengWu operates on 0.25 degree lat-lon grid (south-pole
+        including) equirectangular grid with 69 atmospheric/surface variables. This model
+        uses two time-steps as an input.
 
+    - https://arxiv.org/abs/2304.02948
+    - https://github.com/OpenEarthLab/FengWu
     """
-
-    model_name = "fuxi"
+    model_name = "fengwu"
 
     def __init__(self, *args, **kwargs):
         super().__init__(self.model_name, *args, **kwargs)
 
     def build_model(self):
-        return FuXi.load_model(FuXi.load_default_package())
+        return FengWu.load_model(FengWu.load_default_package())
 
     def build_datasource(self):
         if self.ic_source == "gfs":
