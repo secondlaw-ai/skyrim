@@ -39,6 +39,7 @@ dependencies = [
   "eccodes",
   "cdsapi",
   "cfgrib",
+  "ecmwf"
 ]
 
 [project.scripts]
