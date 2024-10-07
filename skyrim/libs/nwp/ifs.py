@@ -250,6 +250,9 @@ class IFSModel:
         logger.debug(f"len(steps): {len(steps)}")
 
         darray = self.fetch_dataarray(start_time, steps)
+        if not self._cache:
+            logger.debug("Clearing cached files downloaded during the session")
+            self.clear_cached_files()
         return darray
 
     def predict(

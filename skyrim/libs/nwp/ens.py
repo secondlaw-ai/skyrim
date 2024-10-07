@@ -2,6 +2,7 @@
 TODO:
 - [ ] Add support to check if the forecast is available before downloading.
 - [ ] Add "snipe" method to fetch all available forecasts for a given date and time. 
+- [ ] Add info about ENS resolution changes
 
 NOTE: 
 When downloaded from opendata: 
@@ -146,7 +147,7 @@ class ENSModel:
         multithread: bool = False,
         max_workers: int = 4,
     ):
-
+        # TODO: add docstring!
         # TODO: check when the resolution of this product became 0.25
 
         self._cache = cache
@@ -418,6 +419,10 @@ class ENSModel:
         logger.debug(f"len(steps): {len(steps)}")
 
         darray = self.fetch_dataarray(start_time, steps)
+
+        if not self._cache:
+            logger.debug("Clearing cached files downloaded during the session")
+            self.clear_cached_files()
         return darray
 
     def _slice_lead_time_to_steps(

@@ -280,6 +280,9 @@ class GFSModel:
         logger.debug(f"len(steps): {len(steps)}")
 
         darray = self.fetch_dataarray(start_time, steps)
+        if not self._cache:
+            logger.debug("Clearing cached files downloaded during the session")
+            self.clear_cached_files()
         return darray
 
     def predict(
@@ -482,7 +485,6 @@ class GFSModel:
             grib_file = self._download_s3_grib_to_cache(
                 s3_uri, byte_offset=byte_offset, byte_length=byte_length
             )
-            self.cached_files.append(grib_file)
 
             da = xr.open_dataarray(
                 grib_file, engine="cfgrib", backend_kwargs={"indexpath": ""}
