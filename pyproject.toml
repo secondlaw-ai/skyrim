@@ -35,6 +35,7 @@ dependencies = [
   'openmeteo-requests',
   'meteostat',
   'huggingface_hub',
+  'python-dotenv',  
 ]
 
 [project.scripts]
