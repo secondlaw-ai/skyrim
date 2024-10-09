@@ -2,7 +2,6 @@
 TODO:
 - [ ] Add support to check if the forecast is available before downloading.
 - [ ] Add "snipe" method to fetch all available forecasts for a given date and time. 
-- [ ] Add info about ENS resolution changes
 
 NOTE: 
 When downloaded from opendata: 
@@ -133,8 +132,6 @@ class ENSModel:
 
     """
 
-    LAT = np.linspace(90, -90, 721)
-    LON = np.linspace(0, 360, 1440, endpoint=False)
     MODEL_NAME = "ENS"
     VOCAB = ENS_Vocabulary.VOCAB
 
@@ -146,6 +143,7 @@ class ENSModel:
         cache: bool = True,
         multithread: bool = False,
         max_workers: int = 4,
+        resolution: Literal["0p25", "0p4-beta"] = "0p25",
     ):
         # TODO: add docstring!
         # TODO: check when the resolution of this product became 0.25
@@ -160,10 +158,17 @@ class ENSModel:
         self.model_name = "ENS"
 
         ensure_ecmwf_loaded()
-        self.client = ecmwf.opendata.Client(source=source)
+        self.client = ecmwf.opendata.Client(source=source, resol=resolution)
         logger.info(f"ENS model initialized with channels: {channels}")
         logger.info(f"member numbers: {numbers}")
         logger.debug(f"ENS Cache location: {self.cache}")
+
+        if resolution == "0p25":
+            self.LAT = np.linspace(90, -90, 721)
+            self.LON = np.linspace(0, 360, 1440, endpoint=False)
+        else:
+            self.LAT = np.linspace(90, -90, 451)
+            self.LON = np.linspace(0, 360, 900, endpoint=False)
 
     def assure_channels_exist(self, channels):
         for channel in channels:
