@@ -119,6 +119,8 @@ class IFSModel:
     Additional resources:
         Known IFS forecasting issues:
         https://confluence.ecmwf.int/display/FCST/Known+IFS+forecasting+issues
+
+    # TODO: add info about the availability of different resolutions
     """
 
     IFS_BUCKET_NAME = "ecmwf-forecasts"
