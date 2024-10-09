@@ -2,7 +2,6 @@
 TODO:
 - [ ] Add support to check if the forecast is available before downloading.
 - [ ] Add "snipe" method to fetch all available forecasts for a given date and time. 
-- [ ] Add info about ENS resolution changes
 
 NOTE: 
 When downloaded from opendata: 
