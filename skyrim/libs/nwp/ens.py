@@ -1,6 +1,5 @@
 """
 TODO:
-- [ ] Add support to check if the forecast is available before downloading.
 - [ ] Add "snipe" method to fetch all available forecasts for a given date and time. 
 
 NOTE: 
@@ -37,6 +36,8 @@ from typing import Literal
 from loguru import logger
 import xarray as xr
 import numpy as np
+import boto3
+import botocore
 import ecmwf.opendata
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
@@ -134,6 +135,7 @@ class ENSModel:
 
     MODEL_NAME = "ENS"
     VOCAB = ENS_Vocabulary.VOCAB
+    BUCKET = "ecmwf-forecasts"
 
     def __init__(
         self,
@@ -408,6 +410,38 @@ class ENSModel:
             os.remove(target) if os.path.exists(target) else None
             raise
 
+    def available_start_time(self, start_time: datetime) -> bool:
+        """Checks if the given date and time are available in the IFS AWS data store.
+
+        Parameters
+        ----------
+        start_time : datetime
+            The date and time to check availability for.
+
+        Returns
+        -------
+        bool
+            True if data for the specified date and time is available, False otherwise.
+        """
+
+        s3 = boto3.client(
+            "s3", config=botocore.config.Config(signature_version=botocore.UNSIGNED)
+        )
+        file_prefix = f"{start_time.strftime('%Y%m%d')}/{start_time.hour:02d}z/"
+        logger.debug(f"Checking for data at prefix: {file_prefix}")
+        try:
+            response = s3.list_objects_v2(
+                Bucket=self.BUCKET,
+                Prefix=file_prefix,
+                Delimiter="/",
+                MaxKeys=1,
+            )
+        except botocore.exceptions.ClientError as e:
+            logger.error("Failed to access data from the IFS S3 bucket: {e}")
+            return False
+
+        return "KeyCount" in response and response["KeyCount"] > 0
+
     def forecast(
         self,
         start_time: datetime.datetime,
@@ -422,6 +456,10 @@ class ENSModel:
         logger.debug(f"Forecast start time: {start_time}")
         logger.debug(f"Forecast steps: {steps}")
         logger.debug(f"len(steps): {len(steps)}")
+
+        if not self.available_start_time(start_time):
+            logger.error(f"No ENS data available for {start_time}")
+            raise Exception(f"Data not available for {start_time}")
 
         darray = self.fetch_dataarray(start_time, steps)
 
