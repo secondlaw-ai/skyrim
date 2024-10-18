@@ -251,6 +251,10 @@ class IFSModel:
         logger.debug(f"Forecast steps: {steps}")
         logger.debug(f"len(steps): {len(steps)}")
 
+        if not self.available_start_time(start_time):
+            logger.error(f"No IFS data available for {start_time}")
+            raise Exception(f"Data not available for {start_time}")
+
         darray = self.fetch_dataarray(start_time, steps)
         if not self._cache:
             logger.debug("Clearing cached files downloaded during the session")
