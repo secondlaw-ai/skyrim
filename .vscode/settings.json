@@ -1,9 +1,0 @@
-{
-  "editor.formatOnSave": true,
-  "vscode-neovim.compositeKeys": {
-    "jk": {
-      "command": "vscode-neovim.lua",
-      "args": ["vim.api.nvim_input('<ESC>')"]
-    }
-  }
-}
