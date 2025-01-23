@@ -233,6 +233,7 @@ Currently supported models are:
 - [x] [(NWP) ECMWF ENS](https://confluence.ecmwf.int/display/FUG/Section+2.1.2.1+ENS+-+Ensemble+Forecasts)
 - [ ] [(NWP) ICON](https://www.dwd.de/EN/ourservices/nwp_forecast_data/nwp_forecast_data.html)
 - [ ] [(NWP) GEFS](https://www.ncei.noaa.gov/products/weather-climate-models/global-ensemble-forecast)
+- [ ] [ECMWF AIFS](https://arxiv.org/pdf/2406.01465)
 - [ ] [Aurora](https://github.com/microsoft/aurora)
 - [X] [FuXi](https://www.nature.com/articles/s41612-023-00512-1)
 - [X] [FengWu](https://arxiv.org/pdf/2304.02948)
