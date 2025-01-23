@@ -7,9 +7,7 @@ from .models import MODELS
 from .models.base import GlobalModel, adjust_lead_time, GlobalPrediction
 from .models.ensemble import GlobalEnsemble
 
-
 load_dotenv()
-
 
 class Skyrim:
     def __init__(

@@ -218,7 +218,7 @@ print(f"Wind speed at Akyaka: {wind_speed:.2f} knots")
 
 1. NOAA GFS
 2. ECMWF IFS
-3. ERA5 Re-analysis Dataset
+3. ERA5 Re-analysis
 
 ## Large weather models supported
 
@@ -232,10 +232,11 @@ Currently supported models are:
 - [x] [(NWP) NOAA GFS](https://www.ncei.noaa.gov/products/weather-climate-models/global-forecast) -- [notebook](https://github.com/secondlaw-ai/skyrim/blob/master/notebooks/03_gfs_model.ipynb)
 - [x] [(NWP) ECMWF ENS](https://confluence.ecmwf.int/display/FUG/Section+2.1.2.1+ENS+-+Ensemble+Forecasts)
 - [ ] [(NWP) ICON](https://www.dwd.de/EN/ourservices/nwp_forecast_data/nwp_forecast_data.html)
+- [ ] [(NWP) GEFS](https://www.ncei.noaa.gov/products/weather-climate-models/global-ensemble-forecast)
+- [ ] [ECMWF AIFS](https://arxiv.org/pdf/2406.01465)
 - [ ] [Aurora](https://github.com/microsoft/aurora)
 - [X] [FuXi](https://www.nature.com/articles/s41612-023-00512-1)
 - [X] [FengWu](https://arxiv.org/pdf/2304.02948)
-- [ ] [Nano MetNet](https://arxiv.org/abs/2306.06079)
 
 ### License
 
