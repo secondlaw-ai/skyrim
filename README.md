@@ -75,11 +75,13 @@ After you have your forecast, you can explore it by running a notebook (without 
 modal run skyrim/modal/forecast.py::run_analysis
 ```
 
-This will output a jupyter notebook link that you can follow and access the forecast. For instance, to read the forecast you can run from the notebook the following:
-
+This will output a jupyter notebook link that has access to the full forecast. In the notebook, to read the forecast you can run the following:
 ```
 import xarray as xr
-forecast = xr.open_dataset('/skyrim/outputs/[forecast_id]/[filename], engine='scipy')
+# by default all forecasts are saved under /skyrim/outputs in the modal store
+forecast = xr.open_zarr('/skyrim/outputs/[forecast_id]')
+# to visualize
+forecast.sel(channel='t2m').isel(time=0).plot()
 ```
 
 Once you are done, best is to delete the volume as a daily forecast is about 2GB:
