@@ -42,7 +42,7 @@ Our goal is to make these models accessible by providing a well maintained infra
 Clone the repo, set an env (either conda or venv) and then run
 
 ```bash
-git clone https://github.com/your-repo/skyrim.git
+git clone https://github.com/secondlaw-ai/skyrim.git
 cd skyrim
 pip install .
 ```
