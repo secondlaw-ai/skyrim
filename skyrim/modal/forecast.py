@@ -59,7 +59,7 @@ def run_inference(*args, **kwargs):
 
 analysis_image = (
     Image.debian_slim()
-    .pip_install("python-dotenv", "jupyterlab", "loguru", "scipy", "xarray")
+    .pip_install("python-dotenv", "jupyterlab", "loguru", "scipy", "xarray", "zarr", "matplotlib")
     .env(
         {
             "CDSAPI_KEY": CDSAPI_KEY,
