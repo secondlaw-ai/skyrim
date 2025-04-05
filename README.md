@@ -1,10 +1,8 @@
 <h1 align="center">
- <a href="https://www.secondlaw.xyz">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./assets/skyrim_banner_1.png"/>
     <img height="auto" width="90%" src="./assets/skyrim_banner_1.png"/>
   </picture>
- </a>
  <br></br>
 
 </h1>
@@ -33,7 +31,7 @@
 
 Skyrim allows you to run any large weather model with a consumer grade GPU.
 
-Until very recently, weather forecasts were run in 100K+ CPU HPC clusters, solving massive numerical weather models (NWP). Within last 2 years, open-source foundation models trained on weather simulation datasets surpassed the skill level of these numerical models.
+Until very recently, weather forecasts were run in 100K+ CPU HPC clusters, solving massive numerical weather models (NWP). Within last 3 years, open-source foundation models trained on weather simulation datasets surpassed the skill level of these numerical models.
 
 Our goal is to make these models accessible by providing a well maintained infrastructure.
 
